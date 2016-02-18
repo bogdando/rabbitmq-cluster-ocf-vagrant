@@ -94,7 +94,7 @@ Vagrant.configure(2) do |config|
         d.name = "n1"
         d.create_args = ["-i", "-t", "--privileged", "--ip=#{IP24NET}.2", "--net=rabbits"]
       end
-      config.trigger.after :up do
+      config.trigger.after :up, :option => { :vm => 'n1' } do
         docker_exec("n1","#{hosts_setup} >/dev/null 2>&1")
         docker_exec("n1","#{corosync_setup} >/dev/null 2>&1")
         docker_exec("n1","#{rabbit_ocf_setup} >/dev/null 2>&1")
@@ -124,7 +124,7 @@ Vagrant.configure(2) do |config|
           d.name = "n#{index}"
           d.create_args = ["-i", "-t", "--privileged", "--ip=#{IP24NET}.#{ip_ind}", "--net=rabbits"]
         end
-        config.trigger.after :up do
+        config.trigger.after :up, :option => { :vm => "n#{index}" } do
           docker_exec("n#{index}","#{hosts_setup} >/dev/null 2>&1")
           docker_exec("n#{index}","#{corosync_setup} >/dev/null 2>&1")
           docker_exec("n#{index}","#{rabbit_ocf_setup} >/dev/null 2>&1")
@@ -140,7 +140,7 @@ Vagrant.configure(2) do |config|
     end
   end
 
-  config.trigger.after :up do
+  config.trigger.after :up, :option => { :vm => "n#{SLAVES_COUNT+1}" } do
     puts "For smoke test, login to one of the nodes and use the command: sudo #{rabbit_test}"
   end
 end
