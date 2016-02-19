@@ -7,7 +7,7 @@ count=0
 while [ $count -lt 160 ]
 do
   crm_node -l
-  [ $? -eq 0 ] && break 
+  [ $? -eq 0 ] && break
   service pacemaker restart
   sleep 5
 done

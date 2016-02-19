@@ -29,11 +29,16 @@ Required vagrant plugins: vagrant-triggers, vagrant-libvirt.
 * Generates a command for a smoke test for the rabbit cluster. This may be
   run on one of the nodes (n1, n2, etc.). If the cluster assembles within couple
   of minutes, it puts `RabbitMQ cluster smoke test: PASSED`.
+* Shares the host system docker daemon, images and containers. So you can
+  launch nested containers as well.
 
 Note, that constants from the ``Vagrantfile`` may be as well configred as
-environment variables. Also note, that for the docker wily image, ssh server is
-not installed and the command ``vagrant ssh`` is not working. Instead use the
-``docker exec -it n1 bash`` or suchlike.
+``vagrant-settings.yaml_defaults`` or ``vagrant-settings.yaml`` and will be
+overriden by environment variables, if specified.
+
+Also note, that for workarounds implemented for the docker provider made
+the command ``vagrant ssh`` not working (and sshd is not running in containers).
+Instead use the ``docker exec -it n1 bash`` or suchlike.
 
 ## Known issues
 
@@ -41,6 +46,11 @@ not installed and the command ``vagrant ssh`` is not working. Instead use the
   Pacemaker 1.1.12, while the image with Ubuntu 14.10 contains Pacemaker 1.1.10
   and there is a stability issue which renders the pacemakerd daemon stopping
   sporadically, therefore the RabbitMQ cluster does not assemble well.
+
+* Pacemaker 1.1.12 seems behave better in a container, although things are still
+  buggy, ``crm_node -l`` may start reporting empty nodes list, then rabbitmq OCF
+  RA thinks the rabbit node is running outside of cluster and restarts. This was
+  seen when using custom docker run commands, which are not ``/sbin/init``.
 
 * For the docker provider, a networking is [not implemented](https://github.com/mitchellh/vagrant/issues/6667)
   and there is no [docker-exec privisioner](https://github.com/mitchellh/vagrant/issues/4179)
@@ -51,11 +61,11 @@ not installed and the command ``vagrant ssh`` is not working. Instead use the
   Or use ``docker rm -f -v`` to force manual removal, but keep in mind that
   that will likely make your docker images directory eating more and more free
   space.
-  
+
 * Make sure there is no conflicting host networks exist, like
   ``packer-atlas-example0`` or ``vagrant-libvirt`` or the like. Otherwise nodes may
-  become isolated from the host system. 
-  
+  become isolated from the host system.
+
 ## Troubleshooting
 
 You may want to use the command like:

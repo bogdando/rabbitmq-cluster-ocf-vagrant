@@ -1,14 +1,23 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-require "log4r"
+require 'log4r'
+require 'yaml'
 
-SLAVES_COUNT=(ENV['SLAVES_COUNT'] || '1').to_i
-IP24NET=ENV['IP24NET'] || "10.10.10"
-IMAGE_NAME=ENV['IMAGE_NAME'] || "bogdando/rabbitmq-cluster-ocf"
-DOCKER_IMAGE=ENV['DOCKER_IMAGE'] || "bogdando/rabbitmq-cluster-ocf-wily"
-DOCKER_CMD=ENV['DOCKER_CMD'] || "/sbin/init"
-
+# configs, custom updates _defaults
 @logger = Log4r::Logger.new("vagrant::docker::driver")
+defaults_cfg = YAML.load_file('vagrant-settings.yaml_defaults')
+if File.exist?('vagrant-settings.yaml')
+  custom_cfg = YAML.load_file('vagrant-settings.yaml')
+  cfg = defaults_cfg.merge(custom_cfg)
+else
+  cfg = defaults_cfg
+end
+
+SLAVES_COUNT = (ENV['SLAVES_COUNT'] || cfg['slaves_count']).to_i
+IP24NET = ENV['IP24NET'] || cfg['ip24net']
+IMAGE_NAME = ENV['IMAGE_NAME'] || cfg['image_name']
+DOCKER_IMAGE = ENV['DOCKER_IMAGE'] || cfg['docker_image']
+DOCKER_CMD = ENV['DOCKER_CMD'] || cfg['docker_cmd']
 
 # FIXME(bogdando) more natively to distinguish a provider specific logic
 provider = (ARGV[2] || ENV['VAGRANT_DEFAULT_PROVIDER'] || :docker).to_sym
@@ -34,18 +43,13 @@ cib_cleanup = shell_script("/vagrant/vagrant_script/conf_cib_cleanup.sh")
 # and got to the UCA packages
 rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh")
 
-# Render hosts entries and rabbit node names for the smoke test
-entries = "\"#{IP24NET}.2 n1 n1\""
-rabbit_nodes=["rabbit@n1"]
+# Render rabbit node names for the smoke test
+rabbit_nodes = ["rabbit@n1"]
 SLAVES_COUNT.times do |i|
   index = i + 2
-  ip_ind = i + 3
-  raise if ip_ind > 254
-  entries += " \"#{IP24NET}.#{ip_ind} n#{index} n#{index}\""
   rabbit_nodes << "rabbit@n#{index}"
 end
 rabbit_test = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh", rabbit_nodes)
-hosts_setup = shell_script("/vagrant/vagrant_script/conf_hosts.sh", [entries])
 
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
@@ -82,6 +86,10 @@ Vagrant.configure(2) do |config|
       d.has_ssh = false
       d.cmd = DOCKER_CMD.split(' ')
     end
+
+    # Prepare docker volumes for nested containers
+    docker_volumes = [ "-v", "/sys/fs/cgroup:/sys/fs/cgroup",
+      "-v", "/var/run/docker.sock:/var/run/docker.sock" ]
   else
     config.vm.box = IMAGE_NAME
   end
@@ -92,10 +100,11 @@ Vagrant.configure(2) do |config|
     if provider == :docker
       config.vm.provider :docker do |d, override|
         d.name = "n1"
-        d.create_args = ["-i", "-t", "--privileged", "--ip=#{IP24NET}.2", "--net=rabbits"]
+        d.create_args = ["-i", "-t", "--privileged", "--ip=#{IP24NET}.2", "--net=rabbits",
+          docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n1' } do
-        docker_exec("n1","#{hosts_setup} >/dev/null 2>&1")
+        docker_exec("n1","rsyslogd >/dev/null 2>&1")
         docker_exec("n1","#{corosync_setup} >/dev/null 2>&1")
         docker_exec("n1","#{rabbit_ocf_setup} >/dev/null 2>&1")
         docker_exec("n1","#{rabbit_primitive_setup} >/dev/null 2>&1")
@@ -103,7 +112,6 @@ Vagrant.configure(2) do |config|
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
-      config.vm.provision "shell", run: "always", inline: hosts_setup, privileged: true
       config.vm.provision "shell", run: "always", inline: corosync_setup, privileged: true
       config.vm.provision "shell", run: "always", inline: rabbit_ocf_setup, privileged: true
       config.vm.provision "shell", run: "always", inline: rabbit_primitive_setup, privileged: true
@@ -117,22 +125,22 @@ Vagrant.configure(2) do |config|
     raise if ip_ind > 254
     config.vm.define "n#{index}" do |config|
       config.vm.host_name = "n#{index}"
-      # wait 10 seconds for the first corosync node
-      corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", ["#{IP24NET}.#{ip_ind}", 10])
+      # wait 2 seconds for the first corosync node
+      corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", ["#{IP24NET}.#{ip_ind}", 2])
       if provider == :docker
         config.vm.provider :docker do |d, override|
           d.name = "n#{index}"
-          d.create_args = ["-i", "-t", "--privileged", "--ip=#{IP24NET}.#{ip_ind}", "--net=rabbits"]
+          d.create_args = ["-i", "-t", "--privileged", "--ip=#{IP24NET}.#{ip_ind}", "--net=rabbits",
+            docker_volumes].flatten
         end
         config.trigger.after :up, :option => { :vm => "n#{index}" } do
-          docker_exec("n#{index}","#{hosts_setup} >/dev/null 2>&1")
+          docker_exec("n#{index}","rsyslogd >/dev/null 2>&1")
           docker_exec("n#{index}","#{corosync_setup} >/dev/null 2>&1")
           docker_exec("n#{index}","#{rabbit_ocf_setup} >/dev/null 2>&1")
           docker_exec("n#{index}","#{cib_cleanup} >/dev/null 2>&1")
         end
       else
         config.vm.network :private_network, ip: "#{IP24NET}.#{ip_ind}", :mode => 'nat'
-        config.vm.provision "shell", run: "always", inline: hosts_setup, privileged: true
         config.vm.provision "shell", run: "always", inline: corosync_setup, privileged: true
         config.vm.provision "shell", run: "always", inline: rabbit_ocf_setup, privileged: true
         config.vm.provision "shell", run: "always", inline: cib_cleanup, privileged: true
