@@ -105,6 +105,7 @@ Vagrant.configure(2) do |config|
       end
       config.trigger.after :up, :option => { :vm => 'n1' } do
         docker_exec("n1","rsyslogd >/dev/null 2>&1")
+        docker_exec("n1","sshd >/dev/null 2>&1")
         docker_exec("n1","#{corosync_setup} >/dev/null 2>&1")
         docker_exec("n1","#{rabbit_ocf_setup} >/dev/null 2>&1")
         docker_exec("n1","#{rabbit_primitive_setup} >/dev/null 2>&1")
@@ -135,6 +136,7 @@ Vagrant.configure(2) do |config|
         end
         config.trigger.after :up, :option => { :vm => "n#{index}" } do
           docker_exec("n#{index}","rsyslogd >/dev/null 2>&1")
+          docker_exec("n#{index}","sshd >/dev/null 2>&1")
           docker_exec("n#{index}","#{corosync_setup} >/dev/null 2>&1")
           docker_exec("n#{index}","#{rabbit_ocf_setup} >/dev/null 2>&1")
           docker_exec("n#{index}","#{cib_cleanup} >/dev/null 2>&1")

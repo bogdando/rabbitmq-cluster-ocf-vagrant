@@ -37,8 +37,8 @@ Note, that constants from the ``Vagrantfile`` may be as well configred as
 overriden by environment variables, if specified.
 
 Also note, that for workarounds implemented for the docker provider made
-the command ``vagrant ssh`` not working (and sshd is not running in containers).
-Instead use the ``docker exec -it n1 bash`` or suchlike.
+the command ``vagrant ssh`` not working. Instead use the
+``docker exec -it n1 bash`` or suchlike.
 
 ## Known issues
 
