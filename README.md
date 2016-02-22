@@ -86,6 +86,10 @@ It puts its logs under ``/var/log/syslog`` from the `lrmd` program tag.
 
 ## Travis CI job example
 
-See an example [config](https://github.com/bogdando/rabbitmq-server/blob/travis_ocf_ra/.travis.yml)
-for the forked rabbitmq-server repository.
-A [successful build example](https://travis-ci.org/bogdando/rabbitmq-server/builds/109353708)
+There is an example dummy job ``.travis.yml_example``, which only deploys
+from the given branch of the rabbitmq-server OCF RA and does a smoke test.
+See also an example [job config](https://github.com/bogdando/rabbitmq-server/blob/travis_ocf_ra/.travis.yml)
+for the forked rabbitmq-server repository. And here is how the
+[successful build example](https://travis-ci.org/bogdando/rabbitmq-server/builds/109353708)
+may look like.
+TODO(bogdando) make the job to verify OCF RA changes being submitted.

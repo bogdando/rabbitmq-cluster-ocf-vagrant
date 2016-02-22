@@ -1,0 +1,37 @@
+sudo: required
+
+services:
+  - docker
+
+env:
+- TRAVIS_BRANCH=travis_ocf_ra
+
+before_install:
+- export VAGRANT_VERSION=1.8.1
+- export RABBIT_OCF_SMOKE=true
+- export DOCKER_IMAGE=bogdando/rabbitmq-cluster-ocf-wily
+- sudo apt-get install -qq git wget
+- echo "Downloading vagrant ${VAGRANT_VERSION}..."
+- wget --no-verbose https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}_x86_64.deb
+- echo "Installing vagrant ${VAGRANT_VERSION}..."
+- sudo dpkg -i --force-all ./vagrant_${VAGRANT_VERSION}_x86_64.deb
+- vagrant plugin install vagrant-triggers
+- echo "Upgrading docker..."
+- sudo apt-get update
+- sudo DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install --only-upgrade docker-engine
+- sudo service docker restart
+- docker --version
+- echo "Pulling docker images..."
+- docker pull $DOCKER_IMAGE
+- git clone https://github.com/bogdando/packer-atlas-example.git
+- cd ./packer-atlas-example
+
+
+script:
+- >
+  if [ "${RABBIT_OCF_SMOKE}" = "true" ] ; then
+  vagrant up --provider docker;
+  fi
+
+after_success:
+- docker exec -it n1 /bin/bash /vagrant/vagrant_script/test_rabbitcluster.sh rabbit@n1 rabbit@n2
