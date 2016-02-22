@@ -1,8 +1,9 @@
 # rabbitmq-cluster-ocf-vagrant
 
-| [Atlas Vagrant Boxes (Ubuntu 14.04)](https://atlas.hashicorp.com/bogdando/boxes/rabbitmq-cluster-ocf)
+[Atlas Vagrant Boxes (Ubuntu 14.04)](https://atlas.hashicorp.com/bogdando/boxes/rabbitmq-cluster-ocf)
 | [Docker Image (Ubuntu 14.04)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf/)
 | [Docker Image (Ubuntu 15.10)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf-wily/)
+| [Docker Image (Ubuntu 16.04)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf-xenial/)
 
 A Vagrantfile to bootstrap and somketest a RabbitMQ cluster by the pacemaker
 [OCF RA](https://github.com/rabbitmq/rabbitmq-server/blob/master/scripts/rabbitmq-server-ha.ocf).
@@ -42,13 +43,13 @@ the command ``vagrant ssh`` not working. Instead use the
 
 ## Known issues
 
-* For the docker provider, use the image based on Ubuntu 15.10. It has
-  Pacemaker 1.1.12, while the image with Ubuntu 14.10 contains Pacemaker 1.1.10
-  and there is a stability issue which renders the pacemakerd daemon stopping
+* For the docker provider, use the image based on Ubuntu 15.10 or 16.04. It has
+  Pacemaker 1.1.12 (1.1.14), while the image with Ubuntu 14.10 contains Pacemaker
+  1.1.10 and there is a stability issue with the pacemakerd daemon stopping
   sporadically, therefore the RabbitMQ cluster does not assemble well.
 
-* Pacemaker 1.1.12 seems behave better in a container, although things are still
-  buggy, ``crm_node -l`` may start reporting empty nodes list, then rabbitmq OCF
+* Pacemaker >=1.1.12 seems behave better in containers, although things may be
+  buggy: ``crm_node -l`` may start reporting empty nodes list, then rabbitmq OCF
   RA thinks the rabbit node is running outside of cluster and restarts. This was
   seen when using custom docker run commands, which are not ``/sbin/init``.
 
@@ -88,4 +89,3 @@ It puts its logs under ``/var/log/syslog`` from the `lrmd` program tag.
 See an example [config](https://github.com/bogdando/rabbitmq-server/blob/travis_ocf_ra/.travis.yml)
 for the forked rabbitmq-server repository.
 A [successful build example](https://travis-ci.org/bogdando/rabbitmq-server/builds/109353708)
-
