@@ -107,7 +107,7 @@ Vagrant.configure(2) do |config|
         docker_exec("n1","rsyslogd >/dev/null 2>&1")
         docker_exec("n1","sshd >/dev/null 2>&1")
         docker_exec("n1","#{corosync_setup} >/dev/null 2>&1")
-        docker_exec("n1","#{rabbit_ocf_setup} >/dev/null 2>&1")
+        docker_exec("n1","#{rabbit_ocf_setup}")
         docker_exec("n1","#{rabbit_primitive_setup} >/dev/null 2>&1")
         docker_exec("n1","#{cib_cleanup} >/dev/null 2>&1")
       end
