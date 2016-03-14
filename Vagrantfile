@@ -104,12 +104,12 @@ Vagrant.configure(2) do |config|
           docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n1' } do
-        docker_exec("n1","rsyslogd >/dev/null 2>&1")
-        docker_exec("n1","sshd >/dev/null 2>&1")
-        docker_exec("n1","#{corosync_setup} >/dev/null 2>&1")
+        docker_exec("n1","rsyslogd")
+        docker_exec("n1","sshd")
+        docker_exec("n1","#{corosync_setup}")
         docker_exec("n1","#{rabbit_ocf_setup}")
-        docker_exec("n1","#{rabbit_primitive_setup} >/dev/null 2>&1")
-        docker_exec("n1","#{cib_cleanup} >/dev/null 2>&1")
+        docker_exec("n1","#{rabbit_primitive_setup}")
+        docker_exec("n1","#{cib_cleanup}")
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
@@ -135,11 +135,11 @@ Vagrant.configure(2) do |config|
             docker_volumes].flatten
         end
         config.trigger.after :up, :option => { :vm => "n#{index}" } do
-          docker_exec("n#{index}","rsyslogd >/dev/null 2>&1")
-          docker_exec("n#{index}","sshd >/dev/null 2>&1")
-          docker_exec("n#{index}","#{corosync_setup} >/dev/null 2>&1")
-          docker_exec("n#{index}","#{rabbit_ocf_setup} >/dev/null 2>&1")
-          docker_exec("n#{index}","#{cib_cleanup} >/dev/null 2>&1")
+          docker_exec("n#{index}","rsyslogd")
+          docker_exec("n#{index}","sshd")
+          docker_exec("n#{index}","#{corosync_setup}")
+          docker_exec("n#{index}","#{rabbit_ocf_setup}")
+          docker_exec("n#{index}","#{cib_cleanup}")
         end
       else
         config.vm.network :private_network, ip: "#{IP24NET}.#{ip_ind}", :mode => 'nat'
