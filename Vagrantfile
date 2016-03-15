@@ -18,12 +18,14 @@ IP24NET = ENV['IP24NET'] || cfg['ip24net']
 IMAGE_NAME = ENV['IMAGE_NAME'] || cfg['image_name']
 DOCKER_IMAGE = ENV['DOCKER_IMAGE'] || cfg['docker_image']
 DOCKER_CMD = ENV['DOCKER_CMD'] || cfg['docker_cmd']
+OCF_RA_PATH = ENV['OCF_RA_PATH'] || cfg['ocf_ra_path']
+UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg ['upload_method']
 
 # FIXME(bogdando) more natively to distinguish a provider specific logic
 provider = (ARGV[2] || ENV['VAGRANT_DEFAULT_PROVIDER'] || :docker).to_sym
 
-def shell_script(filename, args=[])
-  shell_script_crafted = "/bin/bash #{filename} #{args.join ' '} 2>/dev/null"
+def shell_script(filename, env=[], args=[])
+  shell_script_crafted = "/bin/bash -c \"#{env.join ' '} #{filename} #{args.join ' '} 2>/dev/null\""
   @logger.info("Crafted shell-script: #{shell_script_crafted})")
   shell_script_crafted
 end
@@ -41,7 +43,8 @@ cib_cleanup = shell_script("/vagrant/vagrant_script/conf_cib_cleanup.sh")
 
 # FIXME(bogdando) remove rendering rabbitmq OCF script setup after v3.5.7 released
 # and got to the UCA packages
-rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh")
+rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
+  ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}"])
 
 # Render rabbit node names for the smoke test
 rabbit_nodes = ["rabbit@n1"]
@@ -49,7 +52,7 @@ SLAVES_COUNT.times do |i|
   index = i + 2
   rabbit_nodes << "rabbit@n#{index}"
 end
-rabbit_test = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh", rabbit_nodes)
+rabbit_test = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh", [], rabbit_nodes)
 
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
@@ -96,7 +99,7 @@ Vagrant.configure(2) do |config|
 
   config.vm.define "n1", primary: true do |config|
     config.vm.host_name = "n1"
-    corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", ["#{IP24NET}.2"])
+    corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", [], ["#{IP24NET}.2"])
     if provider == :docker
       config.vm.provider :docker do |d, override|
         d.name = "n1"
@@ -125,7 +128,7 @@ Vagrant.configure(2) do |config|
     config.vm.define "n#{index}" do |config|
       config.vm.host_name = "n#{index}"
       # wait 2 seconds for the first corosync node
-      corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", ["#{IP24NET}.#{ip_ind}", 2])
+      corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", [], ["#{IP24NET}.#{ip_ind}", 2])
       if provider == :docker
         config.vm.provider :docker do |d, override|
           d.name = "n#{index}"
