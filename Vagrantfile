@@ -18,6 +18,7 @@ IP24NET = ENV['IP24NET'] || cfg['ip24net']
 IMAGE_NAME = ENV['IMAGE_NAME'] || cfg['image_name']
 DOCKER_IMAGE = ENV['DOCKER_IMAGE'] || cfg['docker_image']
 DOCKER_CMD = ENV['DOCKER_CMD'] || cfg['docker_cmd']
+DOCKER_MOUNTS = ENV['DOCKER_MOUNTS'] || cfg['docker_mounts']
 OCF_RA_PATH = ENV['OCF_RA_PATH'] || cfg['ocf_ra_path']
 UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg ['upload_method']
 
@@ -93,6 +94,17 @@ Vagrant.configure(2) do |config|
     # Prepare docker volumes for nested containers
     docker_volumes = [ "-v", "/sys/fs/cgroup:/sys/fs/cgroup",
       "-v", "/var/run/docker.sock:/var/run/docker.sock" ]
+    if DOCKER_MOUNTS != 'none'
+      if DOCKER_MOUNTS.kind_of?(Array)
+        mounts = DOCKER_MOUNTS
+      elif DOCKER_MOUNTS.kind_of?(String)
+        mounts = DOCKER_MOUNTS.split(" ")
+      end
+      mounts.each |m| do
+        next if m == "-v"
+        docker_volumes << [ "-v", m ]
+      end
+    end
   else
     config.vm.box = IMAGE_NAME
   end

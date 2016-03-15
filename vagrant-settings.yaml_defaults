@@ -11,5 +11,8 @@ image_name: bogdando/rabbitmq-cluster-ocf
 docker_image: bogdando/rabbitmq-cluster-ocf-wily
 # /sbin/init, /usr/sbin/sshd -D or suchlike
 docker_cmd: /sbin/init
+# Docker mounts as a list or a ws separated
+docker_mounts: none
+# How to ship the OCF RA script: copy from/wget stable branch
 ocf_ra_path: none
 upload_method: wget
