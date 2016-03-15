@@ -20,7 +20,7 @@ while [ $count -lt 160 ]
 do
   crm configure<<EOF
   property stonith-enabled=false
-  no-quorum-policy=ignore
+  property no-quorum-policy=ignore
   commit
 EOF
   (echo y | crm configure primitive p_rabbitmq-server ocf:rabbitmq:rabbitmq-server-ha \
