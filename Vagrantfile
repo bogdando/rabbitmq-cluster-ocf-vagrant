@@ -97,10 +97,10 @@ Vagrant.configure(2) do |config|
     if DOCKER_MOUNTS != 'none'
       if DOCKER_MOUNTS.kind_of?(Array)
         mounts = DOCKER_MOUNTS
-      elif DOCKER_MOUNTS.kind_of?(String)
+      else
         mounts = DOCKER_MOUNTS.split(" ")
       end
-      mounts.each |m| do
+      mounts.each do |m|
         next if m == "-v"
         docker_volumes << [ "-v", m ]
       end
