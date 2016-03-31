@@ -93,3 +93,14 @@ for the forked rabbitmq-server repository. And here is how the
 [successful build example](https://travis-ci.org/bogdando/rabbitmq-server/builds/109353708)
 may look like.
 TODO(bogdando) make the job to verify OCF RA changes being submitted.
+
+## Jepsen tests
+
+First, create an ssh key with:
+```
+cat /dev/random | ssh-keygen -b 1024 -t rsa -f /tmp/sshkey -q -N ""
+```
+Next, update ./conf files as required. Then run vagrant up.
+Works only with systemd based docker containers and the vagrant docker provider.
+Requires five nodes named n1, n2, n3, n4, n5. Jepsen logs and results may be found in the
+shared volume jepsen under the /logs dir.

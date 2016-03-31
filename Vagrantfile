@@ -21,6 +21,7 @@ DOCKER_CMD = ENV['DOCKER_CMD'] || cfg['docker_cmd']
 DOCKER_MOUNTS = ENV['DOCKER_MOUNTS'] || cfg['docker_mounts']
 OCF_RA_PATH = ENV['OCF_RA_PATH'] || cfg['ocf_ra_path']
 UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg ['upload_method']
+JEPSEN_APP = ENV['JEPSEN_APP'] || cfg ['jepsen_app']
 
 # FIXME(bogdando) more natively to distinguish a provider specific logic
 provider = (ARGV[2] || ENV['VAGRANT_DEFAULT_PROVIDER'] || :docker).to_sym
@@ -38,8 +39,11 @@ def docker_exec (name, script)
   system "docker exec -it #{name} #{script}"
 end
 
-# Render a rabbitmq pacemaker primitive configuration
+# Render a rabbitmq config and a pacemaker primitive configuration
 rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh")
+rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh /tmp/rmq-ha-pol")
+rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq/")
+rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitmq/")
 cib_cleanup = shell_script("/vagrant/vagrant_script/conf_cib_cleanup.sh")
 
 # FIXME(bogdando) remove rendering rabbitmq OCF script setup after v3.5.7 released
@@ -47,13 +51,24 @@ cib_cleanup = shell_script("/vagrant/vagrant_script/conf_cib_cleanup.sh")
 rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
   ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}"])
 
+# Setup lein, jepsen and hosts/ssh access for it
 # Render rabbit node names for the smoke test
+jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
+lein_setup = shell_script("/vagrant/vagrant_script/conf_lein.sh", [], [JEPSEN_APP])
+ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh")
 rabbit_nodes = ["rabbit@n1"]
+entries = "'#{IP24NET}.2 n1'"
+cmd = ["ssh-keyscan -t rsa n1,#{IP24NET}.2 >> ~/.ssh/known_hosts"]
 SLAVES_COUNT.times do |i|
   index = i + 2
+  ip_ind = i + 3
+  entries += " '#{IP24NET}.#{ip_ind} n#{index}'"
   rabbit_nodes << "rabbit@n#{index}"
+  cmd << "ssh-keyscan -t rsa n#{index},#{IP24NET}.#{ip_ind} >> ~/.ssh/known_hosts"
 end
 rabbit_test = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh", [], rabbit_nodes)
+hosts_setup = shell_script("/vagrant/vagrant_script/conf_hosts.sh", [], [entries])
+ssh_allow = shell_script(cmd.join("\n"))
 
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
@@ -121,8 +136,16 @@ Vagrant.configure(2) do |config|
       config.trigger.after :up, :option => { :vm => 'n1' } do
         docker_exec("n1","#{corosync_setup}")
         docker_exec("n1","#{rabbit_ocf_setup}")
+        docker_exec("n1","#{rabbit_ha_pol_setup}")
+        docker_exec("n1","#{rabbit_conf_setup}")
+        docker_exec("n1","#{rabbit_env_setup}")
         docker_exec("n1","#{rabbit_primitive_setup}")
         docker_exec("n1","#{cib_cleanup}")
+        docker_exec("n1","#{jepsen_setup}")
+        docker_exec("n1","#{hosts_setup}")
+        docker_exec("n1","#{ssh_setup}")
+        docker_exec("n1","#{ssh_allow}")
+        docker_exec("n1","#{lein_setup}")
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
@@ -150,7 +173,12 @@ Vagrant.configure(2) do |config|
         config.trigger.after :up, :option => { :vm => "n#{index}" } do
           docker_exec("n#{index}","#{corosync_setup}")
           docker_exec("n#{index}","#{rabbit_ocf_setup}")
+          docker_exec("n#{index}","#{rabbit_ha_pol_setup}")
+          docker_exec("n#{index}","#{rabbit_conf_setup}")
+          docker_exec("n#{index}","#{rabbit_env_setup}")
           docker_exec("n#{index}","#{cib_cleanup}")
+          docker_exec("n#{index}","#{ssh_setup}")
+          docker_exec("n#{index}","#{ssh_allow}")
         end
       else
         config.vm.network :private_network, ip: "#{IP24NET}.#{ip_ind}", :mode => 'nat'

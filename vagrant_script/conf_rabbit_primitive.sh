@@ -1,6 +1,9 @@
 #!/bin/sh
 # Configures the rabbitmq OCF primitive
 # wait for the crmd to become ready
+# Protect from an incident running on hosts which aren't n1, n2, etc.
+hostname | grep -q "^n[0-9]\+"
+[ $? -eq 0 ] || exit 1
 count=0
 while [ $count -lt 160 ]
 do
@@ -20,15 +23,15 @@ while [ $count -lt 160 ]
 do
   crm configure<<EOF
   property stonith-enabled=false
-  property no-quorum-policy=ignore
+  property no-quorum-policy=stop
   commit
 EOF
   (echo y | crm configure primitive p_rabbitmq-server ocf:rabbitmq:rabbitmq-server-ha \
-          params erlang_cookie=DPMDALGUKEOMPTHWPYKC node_port=5672 \
-          op monitor interval=30 timeout=60 \
-          op monitor interval=27 role=Master timeout=60 \
-          op monitor interval=103 role=Slave timeout=60 OCF_CHECK_LEVEL=30 \
-          op start interval=0 timeout=360 \
+          params erlang_cookie=DPMDALGUKEOMPTHWPYKC node_port=5672 policy_file=/tmp/rmq-ha-pol \
+          op monitor interval=30 timeout=180 \
+          op monitor interval=27 role=Master timeout=180 \
+          op monitor interval=35 role=Slave timeout=180 OCF_CHECK_LEVEL=30 \
+          op start interval=0 timeout=180 \
           op stop interval=0 timeout=120 \
           op promote interval=0 timeout=120 \
           op demote interval=0 timeout=120 \

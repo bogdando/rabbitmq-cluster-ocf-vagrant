@@ -2,7 +2,7 @@
 # will use values from this file
 
 # Number of additional nodes to the n1 to be run
-slaves_count: 1
+slaves_count: 4
 # 1st 3 numbers of a required /24 IPv4 docker net
 ip24net: 10.10.10
 # Vagrant box name (Atlas)
@@ -12,7 +12,11 @@ docker_image: bogdando/rabbitmq-cluster-ocf-wily
 # /sbin/init, /usr/sbin/sshd -D or suchlike
 docker_cmd: /sbin/init
 # Docker mounts as a list or a ws separated
-docker_mounts: none
+docker_mounts:
+  - jepsen:/jepsen
+  - /tmp/sshkey:/root/.ssh/id_rsa:ro
+# which app to test with jepsen, e.g. rabbitmq, jepsen, meowdb
+jepsen_app: rabbitmq_ocf_pcmk
 # How to upload the OCF RA : none/copy from/wget stable branch
 ocf_ra_path: none
 upload_method: wget
