@@ -1,6 +1,7 @@
 #!/bin/bash
 # Smoke test for a rabbitmq cluster of given set of nodes,
 # for example: rabbit@n1 rabbit@n2
+# wait for a given WAIT env var
 
 [ -z "${1}" ] && exit 0
 echo '' >/tmp/nodes
@@ -12,7 +13,7 @@ done
 count=0
 result="FAILED"
 throw=1
-while [ $count -lt 160 ]
+while [ $count -lt $WAIT ]
 do
   output=`rabbitmqctl cluster_status 2>/dev/null`
   rc=$?

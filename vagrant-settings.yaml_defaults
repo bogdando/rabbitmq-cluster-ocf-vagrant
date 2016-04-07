@@ -20,3 +20,7 @@ jepsen_app: rabbitmq_ocf_pcmk
 # How to upload the OCF RA : none/copy from/wget stable branch
 ocf_ra_path: none
 upload_method: wget
+# which version to use, e.g.: 3.5.7, or false
+rabbit_ver: "false"
+# smoke test timeout, includes waiting for a cluster
+smoketest_wait: 360

@@ -22,6 +22,8 @@ DOCKER_MOUNTS = ENV['DOCKER_MOUNTS'] || cfg['docker_mounts']
 OCF_RA_PATH = ENV['OCF_RA_PATH'] || cfg['ocf_ra_path']
 UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg ['upload_method']
 JEPSEN_APP = ENV['JEPSEN_APP'] || cfg ['jepsen_app']
+SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg ['smoketest_wait']
+RABBIT_VER = ENV['RABBIT_VER'] || cfg ['rabbit_ver']
 
 # FIXME(bogdando) more natively to distinguish a provider specific logic
 provider = (ARGV[2] || ENV['VAGRANT_DEFAULT_PROVIDER'] || :docker).to_sym
@@ -42,6 +44,7 @@ end
 # Render a rabbitmq config and a pacemaker primitive configuration
 rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh")
 rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh /tmp/rmq-ha-pol")
+rabbit_install = shell_script("/vagrant/vagrant_script/rabbit_install.sh", [], [RABBIT_VER])
 rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq/")
 rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitmq/")
 cib_cleanup = shell_script("/vagrant/vagrant_script/conf_cib_cleanup.sh")
@@ -54,7 +57,7 @@ rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
 # Setup lein, jepsen and hosts/ssh access for it
 # Render rabbit node names for the smoke test
 jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
-lein_setup = shell_script("/vagrant/vagrant_script/conf_lein.sh", [], [JEPSEN_APP])
+lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", [], [JEPSEN_APP])
 ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh")
 rabbit_nodes = ["rabbit@n1"]
 entries = "'#{IP24NET}.2 n1'"
@@ -66,7 +69,7 @@ SLAVES_COUNT.times do |i|
   rabbit_nodes << "rabbit@n#{index}"
   cmd << "ssh-keyscan -t rsa n#{index},#{IP24NET}.#{ip_ind} >> ~/.ssh/known_hosts"
 end
-rabbit_test = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh", [], rabbit_nodes)
+rabbit_test = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh", ["WAIT=#{SMOKETEST_WAIT}"], rabbit_nodes)
 hosts_setup = shell_script("/vagrant/vagrant_script/conf_hosts.sh", [], [entries])
 ssh_allow = shell_script(cmd.join("\n"))
 
@@ -130,22 +133,28 @@ Vagrant.configure(2) do |config|
     if provider == :docker
       config.vm.provider :docker do |d, override|
         d.name = "n1"
-        d.create_args = ["-i", "-t", "--privileged", "--ip=#{IP24NET}.2", "--net=rabbits",
+        d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged", "--ip=#{IP24NET}.2", "--net=rabbits",
           docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n1' } do
-        docker_exec("n1","#{corosync_setup}")
+        docker_exec("n1","#{rabbit_install}") or raise "Failed to install requested rabbitmq package"
+        docker_exec("n1","#{corosync_setup} >/dev/null 2>&1")
         docker_exec("n1","#{rabbit_ocf_setup}")
-        docker_exec("n1","#{rabbit_ha_pol_setup}")
-        docker_exec("n1","#{rabbit_conf_setup}")
-        docker_exec("n1","#{rabbit_env_setup}")
-        docker_exec("n1","#{rabbit_primitive_setup}")
-        docker_exec("n1","#{cib_cleanup}")
-        docker_exec("n1","#{jepsen_setup}")
-        docker_exec("n1","#{hosts_setup}")
-        docker_exec("n1","#{ssh_setup}")
-        docker_exec("n1","#{ssh_allow}")
-        docker_exec("n1","#{lein_setup}")
+        docker_exec("n1","#{rabbit_ha_pol_setup} >/dev/null 2>&1")
+        docker_exec("n1","#{rabbit_conf_setup} >/dev/null 2>&1")
+        docker_exec("n1","#{rabbit_env_setup} >/dev/null 2>&1")
+        docker_exec("n1","#{rabbit_primitive_setup} >/dev/null 2>&1")
+        docker_exec("n1","#{cib_cleanup} >/dev/null 2>&1")
+        # Wait and run a smoke test against a cluster, shall not fail
+        docker_exec("n1","#{rabbit_test}") or raise "Smoke test: FAILED to assemble a cluster"
+        docker_exec("n1","#{jepsen_setup} >/dev/null 2>&1")
+        docker_exec("n1","#{hosts_setup} >/dev/null 2>&1")
+        docker_exec("n1","#{ssh_setup} >/dev/null 2>&1")
+        docker_exec("n1","#{ssh_allow} >/dev/null 2>&1")
+        # this runs all of the jepsen tests for the given app, and it *may* fail
+        docker_exec("n1","#{lein_test}")
+        # Verify if the cluster was recovered, shall not fail
+        docker_exec("n1","#{rabbit_test}") or raise "Smoke test: FAILED to recover the cluster after a Nemesis strike"
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
@@ -167,18 +176,19 @@ Vagrant.configure(2) do |config|
       if provider == :docker
         config.vm.provider :docker do |d, override|
           d.name = "n#{index}"
-          d.create_args = ["-i", "-t", "--privileged", "--ip=#{IP24NET}.#{ip_ind}", "--net=rabbits",
+          d.create_args = ["--stop-signal=SIGKILL", "-i", "-t", "--privileged", "--ip=#{IP24NET}.#{ip_ind}", "--net=rabbits",
             docker_volumes].flatten
         end
         config.trigger.after :up, :option => { :vm => "n#{index}" } do
-          docker_exec("n#{index}","#{corosync_setup}")
+          docker_exec("n#{index}","#{ssh_setup} >/dev/null 2>&1")
+          docker_exec("n#{index}","#{ssh_allow} >/dev/null 2>&1")
+          docker_exec("n#{index}","#{rabbit_install}") or raise "Failed to install requested rabbitmq package"
+          docker_exec("n#{index}","#{corosync_setup} >/dev/null 2>&1")
           docker_exec("n#{index}","#{rabbit_ocf_setup}")
-          docker_exec("n#{index}","#{rabbit_ha_pol_setup}")
-          docker_exec("n#{index}","#{rabbit_conf_setup}")
-          docker_exec("n#{index}","#{rabbit_env_setup}")
-          docker_exec("n#{index}","#{cib_cleanup}")
-          docker_exec("n#{index}","#{ssh_setup}")
-          docker_exec("n#{index}","#{ssh_allow}")
+          docker_exec("n#{index}","#{rabbit_ha_pol_setup} >/dev/null 2>&1")
+          docker_exec("n#{index}","#{rabbit_conf_setup} >/dev/null 2>&1")
+          docker_exec("n#{index}","#{rabbit_env_setup} >/dev/null 2>&1")
+          docker_exec("n#{index}","#{cib_cleanup} >/dev/null 2>&1")
         end
       else
         config.vm.network :private_network, ip: "#{IP24NET}.#{ip_ind}", :mode => 'nat'
@@ -187,9 +197,5 @@ Vagrant.configure(2) do |config|
         config.vm.provision "shell", run: "always", inline: cib_cleanup, privileged: true
       end
     end
-  end
-
-  config.trigger.after :up, :option => { :vm => "n#{SLAVES_COUNT+1}" } do
-    puts "For smoke test, login to one of the nodes and use the command: sudo #{rabbit_test}"
   end
 end

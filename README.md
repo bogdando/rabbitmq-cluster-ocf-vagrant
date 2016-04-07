@@ -19,6 +19,7 @@ the single OCF RA solution, eventually.
 
 Supports libvirt, virtualbox, docker (experimental) providers.
 Required vagrant plugins: vagrant-triggers, vagrant-libvirt.
+TODO(bogdando): add support for debian/centos/rhel images as well.
 
 * Spins up two VM nodes ``[n1, n2]`` with predefined IP addressess
   ``10.10.10.2-3/24`` by default. Use the ``SLAVES_COUNT`` env var, if you need
@@ -84,6 +85,73 @@ OCF_ROOT=/usr/lib/ocf /usr/lib/ocf/resource.d/rabbitmq/rabbitmq-server-ha monito
 
 It puts its logs under ``/var/log/syslog`` from the `lrmd` program tag.
 
+## Jepsen tests
+
+NOTE: Works only with systemd based docker containers and the vagrant docker
+provider.
+
+[Jepsen](https://github.com/aphyr/jepsen) is good to find out how resilient,
+consistent, available your distributed system is. For the Rabbitmq OCF RA case,
+there are [custom tests](https://github.com/bogdando/jepsen/tree/rabbit_pcmk/rabbitmq_ocf_pcmk)
+to check if the cluster recovers from network partitions well. And history
+validation comes just as a free bonus :-) Although the jepsen test results may
+be ignored because it maybe rather related to the
+[rabbitmq itself](https://aphyr.com/posts/315-call-me-maybe-rabbitmq) than to
+the OCF RA clusterer or a Pacemaker.
+
+The idea is to bootstrap Pacemaker with Rabbitmq clusters and allow Jepsen to
+continuousely do hammering of the cluster with Nemesis strikes. Then check if
+the cluster has been recovered. And of cause you may want to look into the
+[history validation](https://aphyr.com/posts/314-computational-techniques-in-knossos)
+results as well. Hopefully, that would give you insights on the rabbitmq server
+(or the pacemaker, or its rabbitmq resource) configuration settings!
+
+Also note that both smoke and jepsen tests will perform an *integration testing*
+of the complete setup, which is Corosync/Pacemaker cluster plus the RabbitMQ
+cluster on top. Keep in mind that network partitions may kill the Pacemaker
+cluster as well making the rabbitmq OCF RA tests results irrelevant.
+
+To proceed with jepsen tests, firstly create an ssh key with:
+```
+cat /dev/random | ssh-keygen -b 1024 -t rsa -f /tmp/sshkey -q -N ""
+```
+Secondly, update `./conf` files as required for a test case and define the env
+settings variables in the `./vagrant-settings.yaml_defaults` file. For example,
+let's use `jepsen_app: rabbitmq_ocf_pcmk`, `rabbit_ver: 3.5.7`.
+And also let's adjust the rabbitmq partition recovery settings as
+```
+--- a/conf/rabbitmq.config
++++ b/conf/rabbitmq.config
+@@ -10,7 +10,7 @@
+          {exit_on_close, false}]
+     },
+     {loopback_users, []},
+-    {cluster_partition_handling, autoheal},
++    {cluster_partition_handling, pause_minority},
+```
+
+Then run `vagrant up`. It launches five nodes named n1, n2, n3, n4, n5. Jepsen logs
+and results may be found in the shared volume named `jepsen`, in the `/logs`.
+
+NOTE: The `jepsen` volume contains a shared state, like the lein docker image and
+the jepsen repo/jarfile/results, for consequent vagrant up/destroy runs. If
+something went wrong, you can safely delete it. Then it will be recreated from the
+scratch as well.
+
+To run lein commmands, use ``docker exec -it jepsen lein foo`` from the n1 node.
+For example, for the `jepsen_app: jepsen`, it may be:
+```
+docker exec -it jepsen lein test :only jepsen.core-test/ssh-test
+```
+And for the `jepsen_app: rabbitmq_ocf_pcmk`, it may be either:
+```
+lein test :only jepsen.rabbitmq_ocf_pcmk-test/rabbit-test
+```
+or just ``lein test``, or even something like
+```
+bash -xx /vagrant/vagrant_script/lein_test.sh rabbitmq_ocf_pcmk
+```
+
 ## Travis CI job example
 
 There is an example dummy job ``.travis.yml_example``, which only deploys
@@ -92,15 +160,3 @@ See also an example [job config](https://github.com/bogdando/rabbitmq-server/blo
 for the forked rabbitmq-server repository. And here is how the
 [successful build example](https://travis-ci.org/bogdando/rabbitmq-server/builds/109353708)
 may look like.
-TODO(bogdando) make the job to verify OCF RA changes being submitted.
-
-## Jepsen tests
-
-First, create an ssh key with:
-```
-cat /dev/random | ssh-keygen -b 1024 -t rsa -f /tmp/sshkey -q -N ""
-```
-Next, update ./conf files as required. Then run vagrant up.
-Works only with systemd based docker containers and the vagrant docker provider.
-Requires five nodes named n1, n2, n3, n4, n5. Jepsen logs and results may be found in the
-shared volume jepsen under the /logs dir.
