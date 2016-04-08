@@ -130,7 +130,8 @@ And also let's adjust the rabbitmq partition recovery settings as
 +    {cluster_partition_handling, pause_minority},
 ```
 
-Then run `vagrant up`. It launches five nodes named n1, n2, n3, n4, n5. Jepsen logs
+Then set `use_jepsen: "true"` in the env settings  and run `vagrant up`.
+It launches five nodes named n1, n2, n3, n4, n5. Jepsen logs
 and results may be found in the shared volume named `jepsen`, in the `/logs`.
 
 NOTE: The `jepsen` volume contains a shared state, like the lein docker image and

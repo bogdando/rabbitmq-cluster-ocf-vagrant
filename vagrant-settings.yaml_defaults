@@ -2,7 +2,7 @@
 # will use values from this file
 
 # Number of additional nodes to the n1 to be run
-slaves_count: 4
+slaves_count: 1
 # 1st 3 numbers of a required /24 IPv4 docker net
 ip24net: 10.10.10
 # Vagrant box name (Atlas)
@@ -24,3 +24,5 @@ upload_method: wget
 rabbit_ver: "false"
 # smoke test timeout, includes waiting for a cluster
 smoketest_wait: 360
+# run jepsen tests or not
+use_jepsen: "false"

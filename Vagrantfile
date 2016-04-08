@@ -21,12 +21,14 @@ DOCKER_CMD = ENV['DOCKER_CMD'] || cfg['docker_cmd']
 DOCKER_MOUNTS = ENV['DOCKER_MOUNTS'] || cfg['docker_mounts']
 OCF_RA_PATH = ENV['OCF_RA_PATH'] || cfg['ocf_ra_path']
 UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg ['upload_method']
+USE_JEPSEN = ENV['USE_JEPSEN'] || cfg ['use_jepsen']
 JEPSEN_APP = ENV['JEPSEN_APP'] || cfg ['jepsen_app']
 SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg ['smoketest_wait']
 RABBIT_VER = ENV['RABBIT_VER'] || cfg ['rabbit_ver']
 
 # FIXME(bogdando) more natively to distinguish a provider specific logic
 provider = (ARGV[2] || ENV['VAGRANT_DEFAULT_PROVIDER'] || :docker).to_sym
+SLAVES_COUNT = 4 if USE_JEPSEN == "true"
 
 def shell_script(filename, env=[], args=[])
   shell_script_crafted = "/bin/bash -c \"#{env.join ' '} #{filename} #{args.join ' '} 2>/dev/null\""
@@ -147,14 +149,16 @@ Vagrant.configure(2) do |config|
         docker_exec("n1","#{cib_cleanup} >/dev/null 2>&1")
         # Wait and run a smoke test against a cluster, shall not fail
         docker_exec("n1","#{rabbit_test}") or raise "Smoke test: FAILED to assemble a cluster"
-        docker_exec("n1","#{jepsen_setup} >/dev/null 2>&1")
-        docker_exec("n1","#{hosts_setup} >/dev/null 2>&1")
-        docker_exec("n1","#{ssh_setup} >/dev/null 2>&1")
-        docker_exec("n1","#{ssh_allow} >/dev/null 2>&1")
-        # this runs all of the jepsen tests for the given app, and it *may* fail
-        docker_exec("n1","#{lein_test}")
-        # Verify if the cluster was recovered, shall not fail
-        docker_exec("n1","#{rabbit_test}") or raise "Smoke test: FAILED to recover the cluster after a Nemesis strike"
+        if USE_JEPSEN == "true"
+          docker_exec("n1","#{jepsen_setup} >/dev/null 2>&1")
+          docker_exec("n1","#{hosts_setup} >/dev/null 2>&1")
+          docker_exec("n1","#{ssh_setup} >/dev/null 2>&1")
+          docker_exec("n1","#{ssh_allow} >/dev/null 2>&1")
+          # this runs all of the jepsen tests for the given app, and it *may* fail
+          docker_exec("n1","#{lein_test}")
+          # Verify if the cluster was recovered, shall not fail
+          docker_exec("n1","#{rabbit_test}") or raise "Smoke test: FAILED to recover the cluster after a Nemesis strike"
+        end
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
@@ -180,8 +184,10 @@ Vagrant.configure(2) do |config|
             docker_volumes].flatten
         end
         config.trigger.after :up, :option => { :vm => "n#{index}" } do
-          docker_exec("n#{index}","#{ssh_setup} >/dev/null 2>&1")
-          docker_exec("n#{index}","#{ssh_allow} >/dev/null 2>&1")
+          if USE_JEPSEN == "true"
+            docker_exec("n#{index}","#{ssh_setup} >/dev/null 2>&1")
+            docker_exec("n#{index}","#{ssh_allow} >/dev/null 2>&1")
+          end
           docker_exec("n#{index}","#{rabbit_install}") or raise "Failed to install requested rabbitmq package"
           docker_exec("n#{index}","#{corosync_setup} >/dev/null 2>&1")
           docker_exec("n#{index}","#{rabbit_ocf_setup}")
