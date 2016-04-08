@@ -32,7 +32,7 @@ do
   count=$((count+10))
   echo "Crm_mon says:"
   timeout --signal=KILL 5 crm_mon -fotAW -1
-  sleep 10
+  sleep 30
 done
 
 echo "RabbitMQ cluster smoke test: ${result}"
