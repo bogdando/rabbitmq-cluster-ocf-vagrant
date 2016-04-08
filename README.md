@@ -157,7 +157,8 @@ bash -xx /vagrant/vagrant_script/lein_test.sh rabbitmq_ocf_pcmk
 
 There is an example dummy job ``.travis.yml_example``, which only deploys
 from the given branch of the rabbitmq-server OCF RA and does a smoke test.
-See also an example [job config](https://github.com/bogdando/rabbitmq-server/blob/travis_ocf_ra/.travis.yml)
+See also an example [job config](https://github.com/bogdando/rabbitmq-server/blob/rabbit_ocf_ra_travis/.travis.yml)
+and [job script](https://github.com/bogdando/rabbitmq-server/blob/rabbit_ocf_ra_travis/scripts/travis_test_ocf_ra.sh)
 for the forked rabbitmq-server repository. And here is how the
 [successful build example](https://travis-ci.org/bogdando/rabbitmq-server/builds/109353708)
 may look like.
