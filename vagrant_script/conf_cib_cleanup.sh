@@ -9,9 +9,13 @@ hostname | grep -q "^n[0-9]\+"
 count=0
 while [ $count -lt 160 ]
 do
-  crm_node -l
+  timeout --signal=KILL 5 crm_node -l
   [ $? -eq 0 ] && break
-  service pacemaker restart
+  if ! timeout --signal=KILL 30 service pacemaker restart
+  then
+    pkill -f -9 pacemaker
+    service pacemaker start
+  fi
   sleep 5
 done
 crm_node -l | awk '{print $2}' | grep -v null > /tmp/valid_nodes

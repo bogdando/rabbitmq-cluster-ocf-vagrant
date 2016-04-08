@@ -15,7 +15,7 @@ result="FAILED"
 throw=1
 while [ $count -lt $WAIT ]
 do
-  output=`rabbitmqctl cluster_status 2>/dev/null`
+  output=`timeout --signal=KILL 10 rabbitmqctl cluster_status 2>/dev/null`
   rc=$?
   state=0
   while read n; do
@@ -30,6 +30,8 @@ do
   fi
   echo "RabbitMQ cluster is yet to be ready"
   count=$((count+10))
+  echo "Crm_mon says:"
+  timeout --signal=KILL 5 crm_mon -fotAW -1
   sleep 10
 done
 

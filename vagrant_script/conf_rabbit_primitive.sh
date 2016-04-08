@@ -7,7 +7,7 @@ hostname | grep -q "^n[0-9]\+"
 count=0
 while [ $count -lt 160 ]
 do
-  if crm_attribute --type crm_config --query --name dc-version | grep -q 'dc-version'
+  if timeout --signal=KILL 5 crm_attribute --type crm_config --query --name dc-version | grep -q 'dc-version'
   then
     break
   fi

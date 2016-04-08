@@ -18,27 +18,16 @@ then
   docker pull pandeiro/lein
 fi
 
-# debug
-docker images
-ls /jepsen/jepsen
-date
-
 # FIXME(bogdando) remove those customs, when build is not required anymore
 # Run lein to make a custom jepsen build
 docker stop jepsen && docker rm -f -v jepsen
 echo "Make a custom jepson jar build"
-docker run -itd \
+docker run -it --rm \
   -v /jepsen/jepsen/jepsen:/app \
   --entrypoint /bin/bash \
   --name jepsen -h jepsen \
   pandeiro/lein:latest -c "lein deps && lein compile && lein uberjar; sync"
-
-# debug
-docker exec -it jepsen mount -l
-docker exec -it jepsen cat /app/project.clj
-
 sync
-docker stop jepsen && docker rm -f -v jepsen
 
 # Run lein for jepsen tests, using the custom build from the target dir mounted
 # Ignore exit code as it may fail. Distributed systems are faily with jepsen...
@@ -52,12 +41,6 @@ docker run --stop-signal=SIGKILL -itd \
   --entrypoint /bin/bash \
   --name jepsen -h jepsen \
   pandeiro/lein:latest
-
-# debug
-docker exec -it jepsen mount -l
-docker exec -it jepsen cat /app/project.clj
-docker exec -it jepsen ls -lah /custom
-
 docker exec -it jepsen bash -c "mkdir -p resources/jepsen/jepsen/0.1.0-SNAPSHOT"
 docker exec -it jepsen bash -c "cp -f /custom/jepsen-0.1.0-SNAPSHOT*  resources/jepsen/jepsen/0.1.0-SNAPSHOT/"
 docker exec -it jepsen bash -c "lein deps && lein compile && lein test"
