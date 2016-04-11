@@ -18,7 +18,7 @@ the single OCF RA solution, eventually.
 ## Vagrantfile
 
 Supports libvirt, virtualbox, docker (experimental) providers.
-Required vagrant plugins: vagrant-triggers, vagrant-libvirt.
+Required vagrant plugins: vagrant-triggers, vagrant-libvirt, fog-libvirt 0.0.3.
 TODO(bogdando): add support for debian/centos/rhel images as well.
 
 * Spins up two VM nodes ``[n1, n2]`` with predefined IP addressess
@@ -67,6 +67,12 @@ the command ``vagrant ssh`` not working. Instead use the
 * Make sure there is no conflicting host networks exist, like
   ``packer-atlas-example0`` or ``vagrant-libvirt`` or the like. Otherwise nodes may
   become isolated from the host system.
+
+* The vagrant libvirt provider (plugin) may be
+  [broken](https://github.com/fog/fog-libvirt/issues/16) for some cases. A w/a:
+  ```
+  vagrant plugin install --plugin-version 0.0.3 fog-libvirt
+  ```
 
 ## Troubleshooting
 

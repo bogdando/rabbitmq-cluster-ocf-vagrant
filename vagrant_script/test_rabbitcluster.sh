@@ -17,6 +17,7 @@ cmd='timeout --signal=KILL 10 rabbitmqctl cluster_status'
 count=0
 result="FAILED"
 throw=1
+WAIT="${WAIT:-180}"
 while [ $count -lt $WAIT ]
 do
   output=`${cmd} 2>/dev/null`
