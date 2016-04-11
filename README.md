@@ -130,8 +130,8 @@ And also let's adjust the rabbitmq partition recovery settings as
 +    {cluster_partition_handling, pause_minority},
 ```
 
-Then set `use_jepsen: "true"` in the env settings  and run `vagrant up`.
-It launches five nodes named n1, n2, n3, n4, n5. Jepsen logs
+Then set `use_jepsen: "true"` in the env settings  and run ``vagrant up``.
+It launches a control node n0 and five nodes named n1, n2, n3, n4, n5. Jepsen logs
 and results may be found in the shared volume named `jepsen`, in the `/logs`.
 
 NOTE: The `jepsen` volume contains a shared state, like the lein docker image and
@@ -139,14 +139,14 @@ the jepsen repo/jarfile/results, for consequent vagrant up/destroy runs. If
 something went wrong, you can safely delete it. Then it will be recreated from the
 scratch as well.
 
-To run lein commmands, use ``docker exec -it jepsen lein foo`` from the n1 node.
+To run lein commmands, use ``docker exec -it jepsen lein foo`` from the control node.
 For example, for the `jepsen_app: jepsen`, it may be:
 ```
 docker exec -it jepsen lein test :only jepsen.core-test/ssh-test
 ```
 And for the `jepsen_app: rabbitmq_ocf_pcmk`, it may be either:
 ```
-lein test :only jepsen.rabbitmq_ocf_pcmk-test/rabbit-test
+docker exec -it jepsen lein test :only jepsen.rabbitmq_ocf_pcmk-test/rabbit-test
 ```
 or just ``lein test``, or even something like
 ```
