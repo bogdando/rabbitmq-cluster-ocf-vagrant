@@ -170,10 +170,6 @@ Vagrant.configure(2) do |config|
           docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n1' } do
-        if USE_JEPSEN == "true"
-          docker_exec("n1","#{ssh_setup} >/dev/null 2>&1")
-          docker_exec("n1","#{ssh_allow} >/dev/null 2>&1")
-        end
         docker_exec("n1","#{rabbit_install}") or raise "Failed to install requested rabbitmq package"
         docker_exec("n1","#{corosync_setup} >/dev/null 2>&1")
         docker_exec("n1","#{rabbit_ocf_setup}")
@@ -182,8 +178,13 @@ Vagrant.configure(2) do |config|
         docker_exec("n1","#{rabbit_env_setup} >/dev/null 2>&1")
         docker_exec("n1","#{rabbit_primitive_setup} >/dev/null 2>&1")
         docker_exec("n1","#{cib_cleanup} >/dev/null 2>&1")
-        # Wait and run a smoke test against a cluster, shall not fail
-        docker_exec("n1","#{rabbit_test}") or raise "Smoke test: FAILED to assemble a cluster"
+        if USE_JEPSEN == "true"
+          docker_exec("n1","#{ssh_setup} >/dev/null 2>&1")
+          docker_exec("n1","#{ssh_allow} >/dev/null 2>&1")
+        else
+          # Wait and run a smoke test against a cluster, shall not fail
+          docker_exec("n1","#{rabbit_test}") or raise "Smoke test: FAILED to assemble a cluster"
+        end
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
