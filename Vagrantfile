@@ -187,6 +187,7 @@ Vagrant.configure(2) do |config|
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
+      config.vm.provision "shell", run: "always", inline: rabbit_install, privileged: true
       config.vm.provision "shell", run: "always", inline: corosync_setup, privileged: true
       config.vm.provision "shell", run: "always", inline: rabbit_ocf_setup, privileged: true
       config.vm.provision "shell", run: "always", inline: rabbit_primitive_setup, privileged: true
@@ -223,6 +224,7 @@ Vagrant.configure(2) do |config|
         end
       else
         config.vm.network :private_network, ip: "#{IP24NET}.#{ip_ind}", :mode => 'nat'
+        config.vm.provision "shell", run: "always", inline: rabbit_install, privileged: true
         config.vm.provision "shell", run: "always", inline: corosync_setup, privileged: true
         config.vm.provision "shell", run: "always", inline: rabbit_ocf_setup, privileged: true
         config.vm.provision "shell", run: "always", inline: cib_cleanup, privileged: true
