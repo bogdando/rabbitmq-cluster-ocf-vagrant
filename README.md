@@ -1,7 +1,8 @@
 # rabbitmq-cluster-ocf-vagrant
 
-[Atlas Vagrant Boxes (Ubuntu 14.04)](https://atlas.hashicorp.com/bogdando/boxes/rabbitmq-cluster-ocf)
-| [Docker Image (Ubuntu 14.04)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf/)
+[Packer Build Scripts](https://github.com/bogdando/packer-atlas-example)
+| [Atlas Vagrant Boxes (Ubuntu 14.04)](https://atlas.hashicorp.com/bogdando/boxes/rabbitmq-cluster-ocf)
+| [Docker Image (Ubuntu 14.04) DEPRECATED](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf/)
 | [Docker Image (Ubuntu 15.10)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf-wily/)
 | [Docker Image (Ubuntu 16.04)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf-xenial/)
 
@@ -44,10 +45,12 @@ the command ``vagrant ssh`` not working. Instead use the
 
 ## Known issues
 
-* For the docker provider, use the image based on Ubuntu 15.10 or 16.04. It has
-  Pacemaker 1.1.12 (1.1.14), while the image with Ubuntu 14.10 contains Pacemaker
-  1.1.10 and there is a stability issue with the pacemakerd daemon stopping
-  sporadically, therefore the RabbitMQ cluster does not assemble well.
+* For the docker provider, use the image based on Ubuntu 15.10 or 16.04. It
+  has Pacemaker 1.1.12 (1.1.14), while the image with Ubuntu 14.10 is
+  DEPRECATED as it contains a Pacemaker 1.1.10 that seems like has stability
+  issues, when cluster members are running in VM-like containers. In the
+  result, the pacemakerd daemon is stopping sporadically and the RabbitMQ
+  cluster cannot assemble as well.
 
 * Pacemaker >=1.1.12 seems behave better in containers, although things may be
   buggy: ``crm_node -l`` may start reporting empty nodes list, then rabbitmq OCF
