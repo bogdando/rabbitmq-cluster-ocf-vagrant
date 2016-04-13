@@ -155,10 +155,13 @@ Vagrant.configure(2) do |config|
         # this runs all of the jepsen tests for the given app, and it *may* fail
         docker_exec("n0","#{lein_test}")
         # Verify if the cluster was recovered, shall not fail
-        docker_exec("n0","#{rabbit_test}") or raise "Smoke test: FAILED to recover the cluster after a Nemesis strike"
+        docker_exec("n0","#{rabbit_test}")
       end
     end
   end
+
+  COMMON_TASKS = [rabbit_install, rabbit_ocf_setup, rabbit_ha_pol_setup,
+                  rabbit_conf_setup, rabbit_env_setup, cib_cleanup]
 
   config.vm.define "n1", primary: true do |config|
     config.vm.host_name = "n1"
@@ -170,29 +173,22 @@ Vagrant.configure(2) do |config|
           docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n1' } do
-        docker_exec("n1","#{rabbit_install}") or raise "Failed to install requested rabbitmq package"
-        docker_exec("n1","#{corosync_setup} >/dev/null 2>&1")
-        docker_exec("n1","#{rabbit_ocf_setup}")
-        docker_exec("n1","#{rabbit_ha_pol_setup} >/dev/null 2>&1")
-        docker_exec("n1","#{rabbit_conf_setup} >/dev/null 2>&1")
-        docker_exec("n1","#{rabbit_env_setup} >/dev/null 2>&1")
-        docker_exec("n1","#{rabbit_primitive_setup} >/dev/null 2>&1")
-        docker_exec("n1","#{cib_cleanup} >/dev/null 2>&1")
         if USE_JEPSEN == "true"
           docker_exec("n1","#{ssh_setup} >/dev/null 2>&1")
           docker_exec("n1","#{ssh_allow} >/dev/null 2>&1")
-        else
-          # Wait and run a smoke test against a cluster, shall not fail
-          docker_exec("n1","#{rabbit_test}") or raise "Smoke test: FAILED to assemble a cluster"
         end
+        [corosync_setup, rabbit_primitive_setup].each { |s| docker_exec("n1","#{s} >/dev/null 2>&1") }
+        COMMON_TASKS.each { |s| docker_exec("n1","#{s} >/dev/null 2>&1") }
+        # Wait and run a smoke test against a cluster, shall not fail
+        docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN == "true"
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
-      config.vm.provision "shell", run: "always", inline: rabbit_install, privileged: true
-      config.vm.provision "shell", run: "always", inline: corosync_setup, privileged: true
-      config.vm.provision "shell", run: "always", inline: rabbit_ocf_setup, privileged: true
-      config.vm.provision "shell", run: "always", inline: rabbit_primitive_setup, privileged: true
-      config.vm.provision "shell", run: "always", inline: cib_cleanup, privileged: true
+      [corosync_setup, rabbit_primitive_setup].each do |s|
+        config.vm.provision "shell", run: "always", inline: s, privileged: true
+      end
+      COMMON_TASKS.each { |s| config.vm.provision "shell", run: "always", inline: s, privileged: true }
+      config.vm.provision "shell", run: "always", inline: rabbit_test, privileged: true
     end
   end
 
@@ -215,20 +211,13 @@ Vagrant.configure(2) do |config|
             docker_exec("n#{index}","#{ssh_setup} >/dev/null 2>&1")
             docker_exec("n#{index}","#{ssh_allow} >/dev/null 2>&1")
           end
-          docker_exec("n#{index}","#{rabbit_install}") or raise "Failed to install requested rabbitmq package"
-          docker_exec("n#{index}","#{corosync_setup} >/dev/null 2>&1")
-          docker_exec("n#{index}","#{rabbit_ocf_setup}")
-          docker_exec("n#{index}","#{rabbit_ha_pol_setup} >/dev/null 2>&1")
-          docker_exec("n#{index}","#{rabbit_conf_setup} >/dev/null 2>&1")
-          docker_exec("n#{index}","#{rabbit_env_setup} >/dev/null 2>&1")
-          docker_exec("n#{index}","#{cib_cleanup} >/dev/null 2>&1")
+          docker_exec("n#{index}","#{corosync_setup}")
+          COMMON_TASKS.each { |s| docker_exec("n#{index}","#{s} >/dev/null 2>&1") }
         end
       else
         config.vm.network :private_network, ip: "#{IP24NET}.#{ip_ind}", :mode => 'nat'
-        config.vm.provision "shell", run: "always", inline: rabbit_install, privileged: true
         config.vm.provision "shell", run: "always", inline: corosync_setup, privileged: true
-        config.vm.provision "shell", run: "always", inline: rabbit_ocf_setup, privileged: true
-        config.vm.provision "shell", run: "always", inline: cib_cleanup, privileged: true
+        COMMON_TASKS.each { |s| config.vm.provision "shell", run: "always", inline: s, privileged: true }
       end
     end
   end
