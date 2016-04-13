@@ -1,0 +1,14 @@
+[Unit]
+Description=Pacemakerd Main Process
+After=pacemaker.service
+Requires=pacemaker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/pacemakerd
+ExecStartPre=! /bin/ps -C pacemakerd
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
