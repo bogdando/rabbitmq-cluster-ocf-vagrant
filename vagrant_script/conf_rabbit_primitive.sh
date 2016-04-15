@@ -18,6 +18,7 @@ done
 # create the rabbitmq multi-state primitive, remove old node's names artifact
 # w/a https://github.com/ClusterLabs/crmsh/issues/120
 # retry for the cib patch diff Error 203
+crm configure show p_rabbitmq-server && exit 0
 count=0
 while [ $count -lt 160 ]
 do

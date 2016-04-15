@@ -160,7 +160,7 @@ Vagrant.configure(2) do |config|
     end
   end
 
-  COMMON_TASKS = [rabbit_install, rabbit_ocf_setup, rabbit_ha_pol_setup,
+  COMMON_TASKS = [rabbit_install, rabbit_ocf_setup, rabbit_primitive_setup, rabbit_ha_pol_setup,
                   rabbit_conf_setup, rabbit_env_setup, cib_cleanup]
 
   config.vm.define "n1", primary: true do |config|
@@ -177,16 +177,14 @@ Vagrant.configure(2) do |config|
           docker_exec("n1","#{ssh_setup} >/dev/null 2>&1")
           docker_exec("n1","#{ssh_allow} >/dev/null 2>&1")
         end
-        [corosync_setup, rabbit_primitive_setup].each { |s| docker_exec("n1","#{s} >/dev/null 2>&1") }
+        docker_exec("n1","#{corosync_setup} >/dev/null 2>&1")
         COMMON_TASKS.each { |s| docker_exec("n1","#{s} >/dev/null 2>&1") }
         # Wait and run a smoke test against a cluster, shall not fail
         docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN == "true"
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
-      [corosync_setup, rabbit_primitive_setup].each do |s|
-        config.vm.provision "shell", run: "always", inline: s, privileged: true
-      end
+      config.vm.provision "shell", run: "always", inline: corosync_setup, privileged: true
       COMMON_TASKS.each { |s| config.vm.provision "shell", run: "always", inline: s, privileged: true }
       config.vm.provision "shell", run: "always", inline: rabbit_test, privileged: true
     end
