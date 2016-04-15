@@ -169,8 +169,8 @@ Vagrant.configure(2) do |config|
     if provider == :docker
       config.vm.provider :docker do |d, override|
         d.name = "n1"
-        d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged", "--ip=#{IP24NET}.2", "--net=rabbits",
-          docker_volumes].flatten
+        d.create_args = [ "--stop-signal=SIGKILL", "--shm-size=500m", "-i", "-t", "--privileged",
+          "--ip=#{IP24NET}.2", "--net=rabbits", docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n1' } do
         if USE_JEPSEN == "true"
@@ -201,8 +201,8 @@ Vagrant.configure(2) do |config|
       if provider == :docker
         config.vm.provider :docker do |d, override|
           d.name = "n#{index}"
-          d.create_args = ["--stop-signal=SIGKILL", "-i", "-t", "--privileged", "--ip=#{IP24NET}.#{ip_ind}", "--net=rabbits",
-            docker_volumes].flatten
+          d.create_args = ["--stop-signal=SIGKILL", "--shm-size=500m", "-i", "-t", "--privileged",
+            "--ip=#{IP24NET}.#{ip_ind}", "--net=rabbits", docker_volumes].flatten
         end
         config.trigger.after :up, :option => { :vm => "n#{index}" } do
           if USE_JEPSEN == "true"
