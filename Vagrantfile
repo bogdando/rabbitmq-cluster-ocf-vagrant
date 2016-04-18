@@ -47,6 +47,7 @@ def docker_exec (name, script)
 end
 
 # Render a rabbitmq config and a pacemaker primitive configuration
+corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh")
 rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh")
 rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh /tmp/rmq-ha-pol")
 rabbit_install = shell_script("/vagrant/vagrant_script/rabbit_install.sh", [], [RABBIT_VER])
@@ -160,12 +161,11 @@ Vagrant.configure(2) do |config|
     end
   end
 
-  COMMON_TASKS = [rabbit_install, rabbit_ocf_setup, rabbit_primitive_setup, rabbit_ha_pol_setup,
-                  rabbit_conf_setup, rabbit_env_setup, cib_cleanup]
+  COMMON_TASKS = [corosync_setup, rabbit_install, rabbit_ocf_setup, rabbit_primitive_setup,
+                  rabbit_ha_pol_setup, rabbit_conf_setup, rabbit_env_setup, cib_cleanup]
 
   config.vm.define "n1", primary: true do |config|
     config.vm.host_name = "n1"
-    corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", [], ["#{IP24NET}.2"])
     if provider == :docker
       config.vm.provider :docker do |d, override|
         d.name = "n1"
@@ -177,14 +177,12 @@ Vagrant.configure(2) do |config|
           docker_exec("n1","#{ssh_setup} >/dev/null 2>&1")
           docker_exec("n1","#{ssh_allow} >/dev/null 2>&1")
         end
-        docker_exec("n1","#{corosync_setup} >/dev/null 2>&1")
         COMMON_TASKS.each { |s| docker_exec("n1","#{s} >/dev/null 2>&1") }
         # Wait and run a smoke test against a cluster, shall not fail
         docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN == "true"
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
-      config.vm.provision "shell", run: "always", inline: corosync_setup, privileged: true
       COMMON_TASKS.each { |s| config.vm.provision "shell", run: "always", inline: s, privileged: true }
       config.vm.provision "shell", run: "always", inline: rabbit_test, privileged: true
     end
@@ -196,8 +194,6 @@ Vagrant.configure(2) do |config|
     raise if ip_ind > 254
     config.vm.define "n#{index}" do |config|
       config.vm.host_name = "n#{index}"
-      # wait 2 seconds for the first corosync node
-      corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", [], ["#{IP24NET}.#{ip_ind}", 2])
       if provider == :docker
         config.vm.provider :docker do |d, override|
           d.name = "n#{index}"
@@ -209,12 +205,10 @@ Vagrant.configure(2) do |config|
             docker_exec("n#{index}","#{ssh_setup} >/dev/null 2>&1")
             docker_exec("n#{index}","#{ssh_allow} >/dev/null 2>&1")
           end
-          docker_exec("n#{index}","#{corosync_setup}")
           COMMON_TASKS.each { |s| docker_exec("n#{index}","#{s} >/dev/null 2>&1") }
         end
       else
         config.vm.network :private_network, ip: "#{IP24NET}.#{ip_ind}", :mode => 'nat'
-        config.vm.provision "shell", run: "always", inline: corosync_setup, privileged: true
         COMMON_TASKS.each { |s| config.vm.provision "shell", run: "always", inline: s, privileged: true }
       end
     end
