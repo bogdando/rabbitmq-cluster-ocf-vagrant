@@ -148,6 +148,12 @@ the jepsen repo/jarfile/results, for consequent vagrant up/destroy runs. If
 something went wrong, you can safely delete it. Then it will be recreated from the
 scratch as well.
 
+To collect logs at the host OS under the `/tmp/results.tar.gz`, use the command like:
+```
+docker run -it --rm -e "GZIP=-9" --entrypoint /bin/tar -v jepsen:/results:ro -v
+/tmp:/out ubuntu cvzf /out/results.tar.gz /results/logs
+```
+
 To run lein commmands, use ``docker exec -it jepsen lein foo`` from the control node.
 For example, for the `jepsen_app: jepsen`, it may be:
 ```
