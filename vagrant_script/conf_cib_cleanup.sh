@@ -16,6 +16,7 @@ do
     pkill -f -9 pacemaker
     service pacemaker start
   fi
+  count=$((count+10))
   sleep 5
 done
 crm_node -l | awk '{print $2}' | grep -v null > /tmp/valid_nodes
