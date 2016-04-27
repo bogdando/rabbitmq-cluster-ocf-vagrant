@@ -1,17 +1,10 @@
 #!/bin/sh
-# Pull images to new location, which is the shared docker volume /jepsen
+# Pull images,
 # Launch lein to test a given app ($1)
 # Protect from an incident running on hosts which aren't n1, n2, etc.
 hostname | grep -q "^n[0-9]\+"
 [ $? -eq 0 ] || exit 1
 [ "$1" ] || exit 1
-unit="/lib/systemd/system/docker.service"
-if ! grep -q '^ExecStart.*\-g' "${unit}"
-then
-  echo "Patch docker service unit"
-  sed -ie 's_^ExecStart.*[^\-g]_& -g /jepsen_' "${unit}"
-  systemctl daemon-reload && systemctl restart docker
-fi
 if ! docker images | grep -q 'pandeiro/lein'
 then
   echo "Pull lein container"

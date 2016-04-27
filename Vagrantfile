@@ -60,9 +60,10 @@ cib_cleanup = shell_script("/vagrant/vagrant_script/conf_cib_cleanup.sh")
 rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
   ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}"])
 
-# Setup lein, jepsen and hosts/ssh access for it
+# Setup docker dropins, lein, jepsen and hosts/ssh access for it
 # Render rabbit node names for the smoke test
 jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
+docker_dropins = shell_script("/vagrant/vagrant_script/conf_docker_dropins.sh")
 lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", [], [JEPSEN_APP])
 ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh",[], [SLAVES_COUNT+1])
 rabbit_nodes = ["rabbit@n1"]
@@ -150,6 +151,7 @@ Vagrant.configure(2) do |config|
         # Wait and run a smoke test against a cluster, shall not fail
         docker_exec("n0","#{rabbit_test}") or raise "Smoke test: FAILED to assemble a cluster"
         # this runs all of the jepsen tests for the given app, and it *may* fail
+        docker_exec("n0","#{docker_dropins}")
         docker_exec("n0","#{lein_test}")
         # Verify if the cluster was recovered, shall not fail
         docker_exec("n0","#{rabbit_test}")
