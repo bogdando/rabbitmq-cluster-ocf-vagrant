@@ -2,8 +2,8 @@
 # WARNING: Changes the root pass for jepsen/jsch as it uses only a pass based auth!
 # Setup jepsen related things, $1 is the number of nX nodes
 # Protect from an incident running on hosts which aren't n1, n2, etc.
-hostname | grep -q "^n[0-9]\+"
-[ $? -eq 0 ] || exit 1
+! [[ `hostname` =~ ^n[0-9]+$ ]] && exit 1
+
 mkdir -p /root/.ssh
 chmod 700 /root/.ssh
 touch /root/.ssh/authorized_keys

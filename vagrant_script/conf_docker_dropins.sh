@@ -1,8 +1,8 @@
 #!/bin/sh
 # Manage drop-ins for a docker service unit
 # Protect from an incident running on hosts which aren't n1, n2, etc.
-hostname | grep -q "^n[0-9]\+"
-[ $? -eq 0 ] || exit 1
+! [[ `hostname` =~ ^n[0-9]+$ ]] && exit 1
+
 unit="/lib/systemd/system/docker.service"
 drop_in="/etc/systemd/system/docker.service.d/"
 mkdir -p $drop_in
