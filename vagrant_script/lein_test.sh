@@ -2,8 +2,8 @@
 # Pull images,
 # Launch lein to test a given app ($1)
 # Protect from an incident running on hosts which aren't n1, n2, etc.
-hostname | grep -q "^n[0-9]\+"
-[ $? -eq 0 ] || exit 1
+! [[ `hostname` =~ ^n[0-9]+$ ]] && exit 1
+
 [ "$1" ] || exit 1
 if ! docker images | grep -q 'pandeiro/lein'
 then
