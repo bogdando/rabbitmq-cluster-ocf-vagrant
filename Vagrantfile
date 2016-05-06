@@ -53,7 +53,6 @@ rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh /tmp
 rabbit_install = shell_script("/vagrant/vagrant_script/rabbit_install.sh", [], [RABBIT_VER])
 rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq/")
 rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitmq/")
-cib_cleanup = shell_script("/vagrant/vagrant_script/conf_cib_cleanup.sh")
 
 # FIXME(bogdando) remove rendering rabbitmq OCF script setup after v3.5.7 released
 # and got to the UCA packages
@@ -160,7 +159,7 @@ Vagrant.configure(2) do |config|
   end
 
   COMMON_TASKS = [corosync_setup, rabbit_install, rabbit_ocf_setup, rabbit_primitive_setup,
-                  rabbit_ha_pol_setup, rabbit_conf_setup, rabbit_env_setup, cib_cleanup]
+                  rabbit_ha_pol_setup, rabbit_conf_setup, rabbit_env_setup]
 
   config.vm.define "n1", primary: true do |config|
     config.vm.host_name = "n1"
