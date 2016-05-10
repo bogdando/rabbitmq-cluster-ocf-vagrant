@@ -1,14 +1,13 @@
 #!/bin/bash
-# Smoke test for a rabbitmq cluster of given set of nodes,
-# for example: rabbit@n1 rabbit@n2
-# wait for a given $WAIT env var
+# Smoke test for a rabbitmq cluster of given # of nodes,
+# for example if $1=2: it will test against {rabbit@n1, rabbit@n2}.
+# Wait for a given $WAIT env var
 # run on remote node, if the $AT_NODE specified.
 # When run localy, provide crm_mon outputs as well.
 [ -z "${1}" ] && exit 0
-echo '' >/tmp/nodes
-while (( "$#" )); do
-  echo "${1}" >> /tmp/nodes
-  shift
+rabbit_nodes=""
+for i in $(seq 1 $1); do
+  rabbit_nodes="rabbit@n$i ${rabbit_nodes}"
 done
 
 cmd='timeout --signal=KILL 10 rabbitmqctl cluster_status'
@@ -23,11 +22,11 @@ do
   output=`${cmd} 2>/dev/null`
   rc=$?
   state=0
-  while read n; do
+  for n in $rabbit_nodes; do
     [ "${n}" ] || continue
     echo "${output}" | grep -q "running_nodes.*${n}"
     [ $? -eq 0 ] || state=1
-  done </tmp/nodes
+  done
   if [ $rc -eq 0 -a $state -eq 0 ]; then
     result="PASSED"
     throw=0

@@ -18,10 +18,13 @@ IMAGE_NAME = ENV['IMAGE_NAME'] || cfg['image_name']
 DOCKER_IMAGE = ENV['DOCKER_IMAGE'] || cfg['docker_image']
 DOCKER_CMD = ENV['DOCKER_CMD'] || cfg['docker_cmd']
 DOCKER_MOUNTS = ENV['DOCKER_MOUNTS'] || cfg['docker_mounts']
+OCF_RA_PROVIDER = ENV['OCF_RA_PROVIDER'] || cfg['ocf_ra_provider']
 OCF_RA_PATH = ENV['OCF_RA_PATH'] || cfg['ocf_ra_path']
 UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg ['upload_method']
 USE_JEPSEN = ENV['USE_JEPSEN'] || cfg ['use_jepsen']
 JEPSEN_APP = ENV['JEPSEN_APP'] || cfg ['jepsen_app']
+JEPSEN_TESTCASE = ENV['JEPSEN_TESTCASE'] || cfg ['jepsen_testcase']
+QUIET = ENV['QUIET'] || cfg ['quiet']
 SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg ['smoketest_wait']
 RABBIT_VER = ENV['RABBIT_VER'] || cfg ['rabbit_ver']
 if USE_JEPSEN == "true"
@@ -46,9 +49,10 @@ def docker_exec (name, script)
   system "docker exec -it #{name} #{script}"
 end
 
-# Render a rabbitmq config and a pacemaker primitive configuration
+# Render a rabbitmq config and a pacemaker primitive configuration with a seed node n1
 corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh")
-rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh")
+rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh",
+  ["SEED=n1"])
 rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh /tmp/rmq-ha-pol")
 rabbit_install = shell_script("/vagrant/vagrant_script/rabbit_install.sh", [], [RABBIT_VER])
 rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq/")
@@ -57,24 +61,25 @@ rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitm
 # FIXME(bogdando) remove rendering rabbitmq OCF script setup after v3.5.7 released
 # and got to the UCA packages
 rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
-  ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}"])
+  ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}",
+   "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}"])
 
 # Setup docker dropins, lein, jepsen and hosts/ssh access for it
-# Render rabbit node names for the smoke test
 jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
 docker_dropins = shell_script("/vagrant/vagrant_script/conf_docker_dropins.sh")
-lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", [], [JEPSEN_APP])
+lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", ["PURGE=true"],
+  [JEPSEN_APP, JEPSEN_TESTCASE])
 ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh",[], [SLAVES_COUNT+1])
-rabbit_nodes = ["rabbit@n1"]
 entries = "'#{IP24NET}.2 n1'"
 SLAVES_COUNT.times do |i|
   index = i + 2
   ip_ind = i + 3
   entries += " '#{IP24NET}.#{ip_ind} n#{index}'"
-  rabbit_nodes << "rabbit@n#{index}"
 end
+rabbit_test_remote = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh",
+  ["AT_NODE=n1", "WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1])
 rabbit_test = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh",
-  ["WAIT=#{SMOKETEST_WAIT}"], rabbit_nodes)
+  ["WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1])
 hosts_setup = shell_script("/vagrant/vagrant_script/conf_hosts.sh", [], [entries])
 
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
@@ -85,10 +90,10 @@ Vagrant.configure(2) do |config|
   if provider == :docker
     # W/a unimplemented docker networking, see
     # https://github.com/mitchellh/vagrant/issues/6667.
-    # Create or delete the rabbits net (depends on the vagrant action)
+    # Create or delete the vagrant net (depends on the vagrant action)
     config.trigger.before :up do
       system <<-SCRIPT
-      if ! docker network inspect rabbits >/dev/null 2>&1 ; then
+      if ! docker network inspect "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1 ; then
         docker network create -d bridge \
           -o "com.docker.network.bridge.enable_icc"="true" \
           -o "com.docker.network.bridge.enable_ip_masquerade"="true" \
@@ -96,13 +101,13 @@ Vagrant.configure(2) do |config|
           --gateway=#{IP24NET}.1 \
           --ip-range=#{IP24NET}.0/24 \
           --subnet=#{IP24NET}.0/24 \
-          rabbits >/dev/null 2>&1
+          "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1
       fi
       SCRIPT
     end
     config.trigger.after :destroy do
       system <<-SCRIPT
-      docker network rm rabbits >/dev/null 2>&1
+      docker network rm "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1
       SCRIPT
     end
 
@@ -133,27 +138,24 @@ Vagrant.configure(2) do |config|
 
   # A Jepsen only case, set up a contol node
   if provider == :docker and USE_JEPSEN == "true"
-    # Use the n1 to run the smoketest from the control node
-    rabbit_test = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh",
-      ["WAIT=#{SMOKETEST_WAIT}","AT_NODE=n1"], rabbit_nodes)
     config.vm.define "n0", primary: true do |config|
       config.vm.host_name = "n0"
       config.vm.provider :docker do |d, override|
         d.name = "n0"
-        d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged", "--ip=#{IP24NET}.254", "--net=rabbits",
-          docker_volumes].flatten
+        d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged", "--ip=#{IP24NET}.254",
+          "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n0' } do
         docker_exec("n0","#{jepsen_setup} >/dev/null 2>&1")
         docker_exec("n0","#{hosts_setup} >/dev/null 2>&1")
         docker_exec("n0","#{ssh_setup} >/dev/null 2>&1")
         # Wait and run a smoke test against a cluster, shall not fail
-        docker_exec("n0","#{rabbit_test}") or raise "Smoke test: FAILED to assemble a cluster"
+        docker_exec("n0","#{rabbit_test_remote}") or raise "Smoke test: FAILED to assemble a cluster"
         # this runs all of the jepsen tests for the given app, and it *may* fail
         docker_exec("n0","#{docker_dropins}")
         docker_exec("n0","#{lein_test}")
         # Verify if the cluster was recovered, shall not fail
-        docker_exec("n0","#{rabbit_test}")
+        docker_exec("n0","#{rabbit_test_remote}")
       end
     end
   end
@@ -161,17 +163,23 @@ Vagrant.configure(2) do |config|
   COMMON_TASKS = [corosync_setup, rabbit_install, rabbit_ocf_setup, rabbit_primitive_setup,
                   rabbit_ha_pol_setup, rabbit_conf_setup, rabbit_env_setup]
 
+  if QUIET == "true" then
+    redirect=">/dev/null 2>&1"
+  else
+    redirect=""
+  end
+
   config.vm.define "n1", primary: true do |config|
     config.vm.host_name = "n1"
     if provider == :docker
       config.vm.provider :docker do |d, override|
         d.name = "n1"
         d.create_args = [ "--stop-signal=SIGKILL", "--shm-size=500m", "-i", "-t", "--privileged",
-          "--ip=#{IP24NET}.2", "--net=rabbits", docker_volumes].flatten
+          "--ip=#{IP24NET}.2", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n1' } do
         docker_exec("n1","#{ssh_setup} >/dev/null 2>&1") if USE_JEPSEN == "true"
-        COMMON_TASKS.each { |s| docker_exec("n1","#{s} >/dev/null 2>&1") }
+        COMMON_TASKS.each { |s| docker_exec("n1","#{s} #{redirect}") }
         # Wait and run a smoke test against a cluster, shall not fail
         docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN == "true"
       end
@@ -192,11 +200,11 @@ Vagrant.configure(2) do |config|
         config.vm.provider :docker do |d, override|
           d.name = "n#{index}"
           d.create_args = ["--stop-signal=SIGKILL", "--shm-size=500m", "-i", "-t", "--privileged",
-            "--ip=#{IP24NET}.#{ip_ind}", "--net=rabbits", docker_volumes].flatten
+            "--ip=#{IP24NET}.#{ip_ind}", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
         end
         config.trigger.after :up, :option => { :vm => "n#{index}" } do
           docker_exec("n#{index}","#{ssh_setup} >/dev/null 2>&1") if USE_JEPSEN == "true"
-          COMMON_TASKS.each { |s| docker_exec("n#{index}","#{s} >/dev/null 2>&1") }
+          COMMON_TASKS.each { |s| docker_exec("n#{index}","#{s} #{redirect}") }
         end
       else
         config.vm.network :private_network, ip: "#{IP24NET}.#{ip_ind}", :mode => 'nat'

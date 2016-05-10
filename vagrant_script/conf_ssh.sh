@@ -10,11 +10,20 @@ touch /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
 ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
 cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
-echo -e "Host n*\nUser root" > /root/.ssh/config
-echo -e "root\nroot" | passwd root
+printf "%b\n" "Host n*\nUser root" > /root/.ssh/config
+printf "%b\n" "root\nroot" | passwd root
 
 for i in $(seq 1 $1); do
   ssh-keyscan -t rsa n$i >> /root/.ssh/known_hosts
+done
+
+# wait for sshd alive
+count=0
+while [ $count -lt 160 ]; do
+  ps -C sshd -o command= | grep -v 'defunct' && break
+  /usr/sbin/sshd
+  count=$((count+10))
+  sleep 10
 done
 
 echo "PermitRootLogin yes" > /etc/ssh/sshd_config && kill -HUP `pgrep -f /usr/sbin/sshd`
