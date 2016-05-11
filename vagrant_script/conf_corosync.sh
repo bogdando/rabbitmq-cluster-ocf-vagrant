@@ -15,9 +15,4 @@ then
   pkill -f -9 pacemaker
   service pacemaker start
 fi
-# FIXME(bogdando) A w/a to ensure the pacemakerd is respawning, if failed
-cp -f /vagrant/conf/pacemakerd.service /lib/systemd/system || /bin/true
-systemctl daemon-reload || /bin/true
-systemctl enable pacemakerd || /bin/true
-systemctl start pacemakerd || /bin/true
 exit 0
