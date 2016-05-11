@@ -77,6 +77,9 @@ the command ``vagrant ssh`` not working. Instead use the
   vagrant plugin install --plugin-version 0.0.3 fog-libvirt
   ```
 
+* If the terminal session looks "broken" after the ``vagrant up/down``, issue a
+  ``reset`` command as well.
+
 ## Troubleshooting
 
 You may want to use the command like:
