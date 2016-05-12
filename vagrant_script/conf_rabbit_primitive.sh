@@ -41,7 +41,8 @@ EOF
           op notify interval=0 timeout=180 \
           meta migration-threshold=10 failure-timeout=30s resource-stickiness=100 && \
     crm --force configure ms p_rabbitmq-server-master p_rabbitmq-server \
-          meta notify=true ordered=false interleave=false master-max=1 master-node-max=1
+          meta notify=true ordered=false interleave=false master-max=1 master-node-max=1 \
+          requires="nothing"
     [ $? -eq 0 ] && break
     count=$((count+10))
     sleep 10
