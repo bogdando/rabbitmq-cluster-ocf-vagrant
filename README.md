@@ -104,7 +104,7 @@ provider.
 
 [Jepsen](https://github.com/aphyr/jepsen) is good to find out how resilient,
 consistent, available your distributed system is. For the Rabbitmq OCF RA case,
-there are [custom tests](https://github.com/bogdando/jepsen/tree/rabbit_pcmk/rabbitmq_ocf_pcmk)
+there are [custom tests](https://github.com/bogdando/jepsen/tree/dev/rabbitmq_ocf_pcmk)
 to check if the cluster recovers from network partitions well. And history
 validation comes just as a free bonus :-) Although the jepsen test results may
 be ignored because it maybe rather related to the
