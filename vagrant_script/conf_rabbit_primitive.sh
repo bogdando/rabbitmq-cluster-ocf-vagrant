@@ -27,6 +27,7 @@ if [ "${name}" = "${SEED}" ] ; then
     crm configure<<EOF
     property stonith-enabled=false
     property no-quorum-policy=stop
+    property cluster-recheck-interval=30s
     commit
 EOF
     crm --force configure primitive p_rabbitmq-server ocf:rabbitmq:rabbitmq \
