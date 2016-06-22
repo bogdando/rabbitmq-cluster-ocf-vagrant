@@ -9,8 +9,9 @@ touch /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
 ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
 cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
-rm -f /root/.ssh/known_hosts
+rm -f /tmp/known_hosts
 for i in $(seq 1 $1); do
-  ssh-keyscan -t rsa n$i >> /root/.ssh/known_hosts
+  ssh-keyscan -t rsa n$i >> /tmp/known_hosts
 done
+cp -f /tmp/known_hosts /root/.ssh/known_hosts
 exit 0
