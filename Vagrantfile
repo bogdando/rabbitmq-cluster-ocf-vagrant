@@ -32,12 +32,17 @@ if USE_JEPSEN == "true"
 else
   SLAVES_COUNT = (ENV['SLAVES_COUNT'] || cfg['slaves_count']).to_i
 end
+if QUIET == "true"
+  REDIRECT=">/dev/null 2>&1"
+else
+  REDIRECT=">/dev/null"
+end
 
 # FIXME(bogdando) more natively to distinguish a provider specific logic
 provider = (ARGV[2] || ENV['VAGRANT_DEFAULT_PROVIDER'] || :docker).to_sym
 
-def shell_script(filename, env=[], args=[])
-  shell_script_crafted = "/bin/bash -c \"#{env.join ' '} #{filename} #{args.join ' '} 2>/dev/null\""
+def shell_script(filename, env=[], args=[], redirect=REDIRECT)
+  shell_script_crafted = "/bin/bash -c \"#{env.join ' '} #{filename} #{args.join ' '} #{redirect}\""
   @logger.info("Crafted shell-script: #{shell_script_crafted})")
   shell_script_crafted
 end
@@ -79,9 +84,9 @@ SLAVES_COUNT.times do |i|
   entries += " '#{IP24NET}.#{ip_ind} n#{index}'"
 end
 rabbit_test_remote = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh",
-  ["AT_NODE=n1", "WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1])
+  ["AT_NODE=n1", "WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1], "1>&2")
 rabbit_test = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh",
-  ["WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1])
+  ["WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1], "1>&2")
 hosts_setup = shell_script("/vagrant/vagrant_script/conf_hosts.sh", [], [entries])
 
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
@@ -111,6 +116,8 @@ Vagrant.configure(2) do |config|
       system <<-SCRIPT
       docker network rm "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1
       SCRIPT
+      # fix terminal bugs
+      system "reset"
     end
 
     config.vm.provider :docker do |d, override|
@@ -148,13 +155,13 @@ Vagrant.configure(2) do |config|
           "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n0' } do
-        docker_exec("n0","#{jepsen_setup} >/dev/null 2>&1")
-        docker_exec("n0","#{hosts_setup} >/dev/null 2>&1")
+        docker_exec("n0","#{jepsen_setup}")
+        docker_exec("n0","#{hosts_setup}")
+        docker_exec("n0","#{ssh_setup}")
         # Wait and run a smoke test against a cluster, shall not fail
         docker_exec("n0","#{rabbit_test_remote}") or raise "Smoke test: FAILED to assemble a cluster"
         # this runs all of the jepsen tests for the given app, and it *may* fail
         docker_exec("n0","#{docker_dropins}")
-        docker_exec("n0","#{ssh_setup} >/dev/null 2>&1")
         docker_exec("n0","#{lein_test}")
         # Verify if the cluster was recovered, shall not fail
         docker_exec("n0","#{rabbit_test_remote}")
@@ -165,12 +172,6 @@ Vagrant.configure(2) do |config|
   COMMON_TASKS = [root_login, ssh_setup, corosync_setup, pcmk_dropins, rabbit_install, rabbit_ocf_setup,
                   rabbit_primitive_setup, rabbit_ha_pol_setup, rabbit_conf_setup, rabbit_env_setup]
 
-  if QUIET == "true" then
-    redirect=">/dev/null 2>&1"
-  else
-    redirect=""
-  end
-
   config.vm.define "n1", primary: true do |config|
     config.vm.host_name = "n1"
     if provider == :docker
@@ -180,12 +181,9 @@ Vagrant.configure(2) do |config|
           "--ip=#{IP24NET}.2", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n1' } do
-        COMMON_TASKS.each { |s| docker_exec("n1","#{s} #{redirect}") }
+        COMMON_TASKS.each { |s| docker_exec("n1","#{s}") }
         # Wait and run a smoke test against a cluster, shall not fail
         docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN == "true"
-      end
-      config.trigger.before :up, :option => { :vm => 'n1' } do
-        docker_exec("n0","#{ssh_setup} >/dev/null 2>&1")
       end
     else
       config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
@@ -207,10 +205,7 @@ Vagrant.configure(2) do |config|
             "--ip=#{IP24NET}.#{ip_ind}", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
         end
         config.trigger.after :up, :option => { :vm => "n#{index}" } do
-          COMMON_TASKS.each { |s| docker_exec("n#{index}","#{s} #{redirect}") }
-        end
-        config.trigger.before :up, :option => { :vm => 'n#{index}' } do
-          docker_exec("n0","#{ssh_setup} >/dev/null 2>&1")
+          COMMON_TASKS.each { |s| docker_exec("n#{index}","#{s}") }
         end
       else
         config.vm.network :private_network, ip: "#{IP24NET}.#{ip_ind}", :mode => 'nat'
