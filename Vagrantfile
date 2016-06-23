@@ -74,8 +74,8 @@ jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
 docker_dropins = shell_script("/vagrant/vagrant_script/conf_docker_dropins.sh")
 pcmk_dropins = shell_script("/vagrant/vagrant_script/conf_pcmk_dropins.sh")
 lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", ["PURGE=true"],
-  [JEPSEN_APP, JEPSEN_TESTCASE])
-ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh",[], [SLAVES_COUNT+1])
+  [JEPSEN_APP, JEPSEN_TESTCASE], "1>&2")
+ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh",[], [SLAVES_COUNT+1], "1>&2")
 root_login = shell_script("/vagrant/vagrant_script/conf_root_login.sh")
 entries = "'#{IP24NET}.2 n1'"
 SLAVES_COUNT.times do |i|
