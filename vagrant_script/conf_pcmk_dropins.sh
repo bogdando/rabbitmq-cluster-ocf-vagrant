@@ -26,7 +26,7 @@ mkdir -p $drop_in
 override="respawn.conf"
 echo "Drop-in respawn for a pacemaker service"
 def="[Unit]
-After=network.target corosync.service
+After=network.target
 Requires=corosync.service
 [Service]
 Type=simple
