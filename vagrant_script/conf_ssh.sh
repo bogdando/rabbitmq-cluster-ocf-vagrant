@@ -14,11 +14,11 @@ rm -f /tmp/known_hosts
 while true; do
   entry="$(ssh-keyscan -t rsa $me)"
   [ "${entry}" ] && break
-  echo "Waiting for SSH keys to arrive o_O"
-  sleep 2
+  echo "${me} is waiting for SSH keys to arrive o_O"
+  sleep 5
 done
 for i in $(seq 1 $1); do
-   echo $entry | sed "s/$me/n$i/g" >> /tmp/known_hosts
+   echo $entry | sed "s/^$me/n$i/g" >> /tmp/known_hosts
 done
 cp -f /tmp/known_hosts /root/.ssh/known_hosts
 exit 0
