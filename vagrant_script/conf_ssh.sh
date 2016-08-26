@@ -8,8 +8,6 @@ mkdir -p /root/.ssh
 chmod 700 /root/.ssh
 touch /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
-ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
-cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
 rm -f /tmp/known_hosts
 while true; do
   entry="$(ssh-keyscan -t rsa $me)"

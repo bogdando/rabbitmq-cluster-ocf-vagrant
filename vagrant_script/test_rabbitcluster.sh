@@ -10,8 +10,9 @@ for i in $(seq 1 $1); do
   rabbit_nodes="rabbit@n$i ${rabbit_nodes}"
 done
 
+echo root > /tmp/sshpass
 cmd='timeout --signal=KILL 10 rabbitmqctl cluster_status'
-[ "${AT_NODE}" ] && cmd="ssh ${AT_NODE} ${cmd}"
+[ "${AT_NODE}" ] && cmd="sshpass -f /tmp/sshpass ssh ${AT_NODE} ${cmd}"
 
 count=0
 result="FAILED"

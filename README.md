@@ -123,13 +123,9 @@ of the complete setup, which is Corosync/Pacemaker cluster plus the RabbitMQ
 cluster on top. Keep in mind that network partitions may kill the Pacemaker
 cluster as well making the rabbitmq OCF RA tests results irrelevant.
 
-To proceed with jepsen tests, firstly create an ssh key with:
-```
-cat /dev/random | ssh-keygen -b 1024 -t rsa -f /tmp/sshkey -q -N ""
-```
-Secondly, update `./conf` files as required for a test case and define the env
-settings variables in the `./vagrant-settings.yaml_defaults` file. For example,
-let's use `jepsen_app: rabbitmq_ocf_pcmk`, `rabbit_ver: 3.5.7`.
+To proceed with jepsen tests, update `./conf` files as required for a test case
+and define the env settings variables in the `./vagrant-settings.yaml_defaults`
+file. For example, let's use `jepsen_app: rabbitmq_ocf_pcmk`, `rabbit_ver: 3.5.7`.
 And also let's adjust the rabbitmq partition recovery settings as
 ```
 --- a/conf/rabbitmq.config

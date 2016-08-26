@@ -38,9 +38,6 @@ else
   REDIRECT=">/dev/null"
 end
 
-# FIXME(bogdando) more natively to distinguish a provider specific logic
-provider = (ARGV[2] || ENV['VAGRANT_DEFAULT_PROVIDER'] || :docker).to_sym
-
 def shell_script(filename, env=[], args=[], redirect=REDIRECT)
   shell_script_crafted = "/bin/bash -c \"#{env.join ' '} #{filename} #{args.join ' '} #{redirect}\""
   @logger.info("Crafted shell-script: #{shell_script_crafted})")
@@ -94,59 +91,53 @@ hosts_setup = shell_script("/vagrant/vagrant_script/conf_hosts.sh", [], [entries
 # backwards compatibility). Please don't change it unless you know what
 # you're doing.
 Vagrant.configure(2) do |config|
-  if provider == :docker
-    # W/a unimplemented docker networking, see
-    # https://github.com/mitchellh/vagrant/issues/6667.
-    # Create or delete the vagrant net (depends on the vagrant action)
-    config.trigger.before :up do
-      system <<-SCRIPT
-      if ! docker network inspect "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1 ; then
-        docker network create -d bridge \
-          -o "com.docker.network.bridge.enable_icc"="true" \
-          -o "com.docker.network.bridge.enable_ip_masquerade"="true" \
-          -o "com.docker.network.driver.mtu"="1500" \
-          --gateway=#{IP24NET}.1 \
-          --ip-range=#{IP24NET}.0/24 \
-          --subnet=#{IP24NET}.0/24 \
-          "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1
-      fi
-      SCRIPT
-    end
-    config.trigger.after :destroy do
-      system <<-SCRIPT
-      docker network rm "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1
-      SCRIPT
-      # fix terminal bugs
-      system "reset"
-    end
+  # W/a unimplemented docker networking, see
+  # https://github.com/mitchellh/vagrant/issues/6667.
+  # Create or delete the vagrant net (depends on the vagrant action)
+  config.trigger.before :up do
+    system <<-SCRIPT
+    if ! docker network inspect "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1 ; then
+      docker network create -d bridge \
+        -o "com.docker.network.bridge.enable_icc"="true" \
+        -o "com.docker.network.bridge.enable_ip_masquerade"="true" \
+        -o "com.docker.network.driver.mtu"="1500" \
+        --gateway=#{IP24NET}.1 \
+        --ip-range=#{IP24NET}.0/24 \
+        --subnet=#{IP24NET}.0/24 \
+        "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1
+    fi
+    SCRIPT
+  end
+  config.trigger.after :destroy do
+    system <<-SCRIPT
+    docker network rm "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1
+    SCRIPT
+  end
 
-    config.vm.provider :docker do |d, override|
-      d.image = DOCKER_IMAGE
-      d.remains_running = false
-      d.has_ssh = false
-      d.cmd = DOCKER_CMD.split(' ')
-    end
+  config.vm.provider :docker do |d, override|
+    d.image = DOCKER_IMAGE
+    d.remains_running = false
+    d.has_ssh = false
+    d.cmd = DOCKER_CMD.split(' ')
+  end
 
-    # Prepare docker volumes for nested containers
-    docker_volumes = [ "-v", "/sys/fs/cgroup:/sys/fs/cgroup",
-      "-v", "/var/run/docker.sock:/var/run/docker.sock" ]
-    if DOCKER_MOUNTS != 'none'
-      if DOCKER_MOUNTS.kind_of?(Array)
-        mounts = DOCKER_MOUNTS
-      else
-        mounts = DOCKER_MOUNTS.split(" ")
-      end
-      mounts.each do |m|
-        next if m == "-v"
-        docker_volumes << [ "-v", m ]
-      end
+  # Prepare docker volumes for nested containers
+  docker_volumes = [ "-v", "/sys/fs/cgroup:/sys/fs/cgroup",
+    "-v", "/var/run/docker.sock:/var/run/docker.sock" ]
+  if DOCKER_MOUNTS != 'none'
+    if DOCKER_MOUNTS.kind_of?(Array)
+      mounts = DOCKER_MOUNTS
+    else
+      mounts = DOCKER_MOUNTS.split(" ")
     end
-  else
-    config.vm.box = IMAGE_NAME
+    mounts.each do |m|
+      next if m == "-v"
+      docker_volumes << [ "-v", m ]
+    end
   end
 
   # A Jepsen only case, set up a contol node
-  if provider == :docker and USE_JEPSEN == "true"
+  if USE_JEPSEN == "true"
     config.vm.define "n0", primary: true do |config|
       config.vm.host_name = "n0"
       config.vm.provider :docker do |d, override|
@@ -174,21 +165,15 @@ Vagrant.configure(2) do |config|
 
   config.vm.define "n1", primary: true do |config|
     config.vm.host_name = "n1"
-    if provider == :docker
-      config.vm.provider :docker do |d, override|
-        d.name = "n1"
-        d.create_args = [ "--stop-signal=SIGKILL", "--shm-size=500m", "-i", "-t", "--privileged",
-          "--ip=#{IP24NET}.2", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
-      end
-      config.trigger.after :up, :option => { :vm => 'n1' } do
-        COMMON_TASKS.each { |s| docker_exec("n1","#{s}") }
-        # Wait and run a smoke test against a cluster, shall not fail
-        docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN == "true"
-      end
-    else
-      config.vm.network :private_network, ip: "#{IP24NET}.2", :mode => 'nat'
-      COMMON_TASKS.each { |s| config.vm.provision "shell", run: "always", inline: s, privileged: true }
-      config.vm.provision "shell", run: "always", inline: rabbit_test, privileged: true
+    config.vm.provider :docker do |d, override|
+      d.name = "n1"
+      d.create_args = [ "--stop-signal=SIGKILL", "--shm-size=500m", "-i", "-t", "--privileged",
+        "--ip=#{IP24NET}.2", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
+    end
+    config.trigger.after :up, :option => { :vm => 'n1' } do
+      COMMON_TASKS.each { |s| docker_exec("n1","#{s}") }
+      # Wait and run a smoke test against a cluster, shall not fail
+      docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN == "true"
     end
   end
 
@@ -198,18 +183,13 @@ Vagrant.configure(2) do |config|
     raise if ip_ind > 254
     config.vm.define "n#{index}" do |config|
       config.vm.host_name = "n#{index}"
-      if provider == :docker
-        config.vm.provider :docker do |d, override|
-          d.name = "n#{index}"
-          d.create_args = ["--stop-signal=SIGKILL", "--shm-size=500m", "-i", "-t", "--privileged",
-            "--ip=#{IP24NET}.#{ip_ind}", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
-        end
-        config.trigger.after :up, :option => { :vm => "n#{index}" } do
-          COMMON_TASKS.each { |s| docker_exec("n#{index}","#{s}") }
-        end
-      else
-        config.vm.network :private_network, ip: "#{IP24NET}.#{ip_ind}", :mode => 'nat'
-        COMMON_TASKS.each { |s| config.vm.provision "shell", run: "always", inline: s, privileged: true }
+      config.vm.provider :docker do |d, override|
+        d.name = "n#{index}"
+        d.create_args = ["--stop-signal=SIGKILL", "--shm-size=500m", "-i", "-t", "--privileged",
+          "--ip=#{IP24NET}.#{ip_ind}", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
+      end
+      config.trigger.after :up, :option => { :vm => "n#{index}" } do
+        COMMON_TASKS.each { |s| docker_exec("n#{index}","#{s}") }
       end
     end
   end
