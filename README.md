@@ -1,8 +1,6 @@
 # rabbitmq-cluster-ocf-vagrant
 
 [Packer Build Scripts](https://github.com/bogdando/packer-atlas-example)
-| [Atlas Vagrant Boxes (Ubuntu 14.04)](https://atlas.hashicorp.com/bogdando/boxes/rabbitmq-cluster-ocf)
-| [Docker Image (Ubuntu 14.04) DEPRECATED](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf/)
 | [Docker Image (Ubuntu 15.10)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf-wily/)
 | [Docker Image (Ubuntu 16.04)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf-xenial/)
 
@@ -19,8 +17,7 @@ the single OCF RA solution, eventually.
 ## Vagrantfile
 
 Supports libvirt, virtualbox, docker (experimental) providers.
-Required vagrant plugins: vagrant-triggers, vagrant-libvirt, fog-libvirt 0.0.3.
-TODO(bogdando): add support for debian/centos/rhel images as well.
+Required vagrant plugins: vagrant-triggers, vagrant-libvirt.
 
 * Spins up two VM nodes ``[n1, n2]`` with predefined IP addressess
   ``10.10.10.2-3/24`` by default. Use the ``SLAVES_COUNT`` env var, if you need
@@ -44,13 +41,6 @@ the command ``vagrant ssh`` not working. Instead use the
 ``docker exec -it n1 bash`` or suchlike.
 
 ## Known issues
-
-* For the docker provider, use the image based on Ubuntu 15.10 or 16.04. It
-  has Pacemaker 1.1.12 (1.1.14), while the image with Ubuntu 14.10 is
-  DEPRECATED as it contains a Pacemaker 1.1.10 that seems like has stability
-  issues, when cluster members are running in VM-like containers. In the
-  result, the pacemakerd daemon is stopping sporadically and the RabbitMQ
-  cluster cannot assemble as well.
 
 * Pacemaker >=1.1.12 seems behave better in containers, although things may be
   buggy: ``crm_node -l`` may start reporting empty nodes list, then rabbitmq OCF
