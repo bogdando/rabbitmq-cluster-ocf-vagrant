@@ -3,7 +3,12 @@
 # Protect from an incident running on hosts which aren't n1, n2, etc.
 hostname | grep -q "^n[0-9]\+"
 [ $? -eq 0 ] || exit 1
-printf "%b\n" "Host n*\nUser root" > /root/.ssh/config
-printf "%b\n" "root\nroot" | passwd root
+printf "Host n*\nUser root" > /tmp/config
+mkdir -p /root/.ssh/
+cp -f /tmp/config /root/.ssh/config
+rm -f /tmp/config
+printf "root\nroot" | passwd root
+mkdir -p /var/run/sshd
+/usr/sbin/sshd
 echo "PermitRootLogin yes" > /etc/ssh/sshd_config && kill -HUP `pgrep -f /usr/sbin/sshd`
 exit 0
