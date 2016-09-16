@@ -8,7 +8,7 @@ ip24net: 10.10.10
 # Vagrant box name (Atlas)
 image_name: bogdando/rabbitmq-cluster-ocf
 # Docker image name (Docker registry)
-docker_image: bogdando/rabbitmq-cluster-ocf-wily
+docker_image: bogdando/rabbitmq-cluster-ocf-xenial
 # /sbin/init, /usr/sbin/sshd -D or suchlike
 docker_cmd: /sbin/init
 # Docker mounts as a list or a ws separated
@@ -21,14 +21,14 @@ jepsen_testcase: rabbit-test
 # Which provider for the OCF RA under test to use
 ocf_ra_provider: rabbitmq
 # How to upload the OCF RA : none/copy from/wget stable branch
-# ocf_ra_path: https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/stable/scripts/rabbitmq-server-ha.ocf
+#ocf_ra_path: https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/stable/scripts/rabbitmq-server-ha.ocf
 ocf_ra_path: none
 upload_method: wget
 # which version to use, e.g.: 3.5.7, or false
-rabbit_ver: 3.6.1
+rabbit_ver: 3.6.4
 # smoke test timeout, includes waiting for a cluster
 smoketest_wait: 360
 # run jepsen tests or not
-use_jepsen: "false"
+use_jepsen: "true"
 # redirect tasks output to /dev/null or not
-quiet: "true"
+quiet: "false"
