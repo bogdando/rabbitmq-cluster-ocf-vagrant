@@ -14,7 +14,6 @@ else
 end
 
 IP24NET = ENV['IP24NET'] || cfg['ip24net']
-IMAGE_NAME = ENV['IMAGE_NAME'] || cfg['image_name']
 DOCKER_IMAGE = ENV['DOCKER_IMAGE'] || cfg['docker_image']
 DOCKER_CMD = ENV['DOCKER_CMD'] || cfg['docker_cmd']
 DOCKER_MOUNTS = ENV['DOCKER_MOUNTS'] || cfg['docker_mounts']
@@ -143,7 +142,7 @@ Vagrant.configure(2) do |config|
       config.vm.provider :docker do |d, override|
         d.name = "n0"
         d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged", "--ip=#{IP24NET}.254",
-          "--memory=512", "--cpu-shares=333",
+          "--memory=256", "--cpu-shares=200",
           "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n0' } do
@@ -169,7 +168,7 @@ Vagrant.configure(2) do |config|
     config.vm.provider :docker do |d, override|
       d.name = "n1"
       d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged",
-        "--memory=512", "--cpu-shares=333",
+        "--memory=256", "--cpu-shares=200",
         "--ip=#{IP24NET}.2", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
     end
     config.trigger.after :up, :option => { :vm => 'n1' } do
