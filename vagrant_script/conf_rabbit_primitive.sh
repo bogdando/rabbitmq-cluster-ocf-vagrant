@@ -2,6 +2,8 @@
 # Configures the rabbitmq OCF primitive
 # wait for the crmd to become ready, wait for a given $SEED node.
 # Protect from an incident running on hosts which aren't n1, n2, etc.
+OCF_RA_PROVIDER=${OCF_RA_PROVIDER:-rabbitmq}
+STORAGE=${STORAGE:-/tmp}
 name=$(hostname)
 echo $name | grep -q "^n[0-9]\+"
 [ $? -eq 0 ] || exit 1
@@ -30,11 +32,10 @@ if [ "${name}" = "${SEED}" ] ; then
     property cluster-recheck-interval=30s
     commit
 EOF
-    crm --force configure primitive p_rabbitmq-server ocf:rabbitmq:rabbitmq \
-          params erlang_cookie=DPMDALGUKEOMPTHWPYKC node_port=5672 policy_file=/tmp/rmq-ha-pol \
+    crm --force configure primitive p_rabbitmq-server ocf:$OCF_RA_PROVIDER:$OCF_RA_PROVIDER \
+          params erlang_cookie=DPMDALGUKEOMPTHWPYKC node_port=5672 policy_file=$STORAGE/rmq-ha-pol \
           op monitor interval=30 timeout=180 \
           op monitor interval=27 role=Master timeout=180 \
-          op monitor interval=35 role=Slave timeout=180 OCF_CHECK_LEVEL=30 \
           op start interval=0 timeout=180 \
           op stop interval=0 timeout=120 \
           op promote interval=0 timeout=120 \

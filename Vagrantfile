@@ -54,7 +54,7 @@ end
 # Render a rabbitmq config and a pacemaker primitive configuration with a seed node n1
 corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh")
 rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh",
-  ["SEED=n1"])
+  ["SEED=n1", "STORAGE=#{STORAGE}", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}"])
 rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh #{STORAGE}/rmq-ha-pol")
 rabbit_install = shell_script("/vagrant/vagrant_script/rabbit_install.sh", ["STORAGE=#{STORAGE}"], [RABBIT_VER])
 rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq/")

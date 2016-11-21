@@ -14,47 +14,47 @@ env:
     DOCKER_IMAGE=bogdando/rabbitmq-cluster-ocf-xenial
     UPLOAD_METHOD=none
     OCF_RA_PROVIDER=rabbitmq
+    CACHE=/var/tmp/releases
+    DOCKER_MOUNTS="$HOME/rabbitmq-server-ha.ocf:/usr/lib/ocf/resource.d/$OCF_RA_PROVIDER/$OCF_RA_PROVIDER:ro"
   matrix:
     - >-
       USE_JEPSEN=false
       QUIET=false
       SLAVES_COUNT=1
-      DOCKER_MOUNTS="$HOME/scripts/rabbitmq-server-ha.ocf:/tmp/$OCF_RA_PROVIDER"
     - >-
       USE_JEPSEN=true
       QUIET=true
       SLAVES_COUNT=4
-      DOCKER_MOUNTS="$HOME/scripts/rabbitmq-server-ha.ocf:/tmp/$OCF_RA_PROVIDER jepsen:/jepsen"
-
-cache:
-  - directories:
-    - /tmp/vagrant-cache
-    - /var/tmp/releases
-    - /var/cache/apt
 
 before_cache:
   # Save tagged docker images
   - >
-    mkdir -p /var/tmp/releases && docker images -a --filter='dangling=false' --format '{{.Repository}}:{{.Tag}} {{.ID}}'
-    | xargs -n 2 -t sh -c 'test -e /var/tmp/releases/$1.tar || docker save $0 | gzip -6 > /var/tmp/releases/$1.tar'
+    mkdir -p $CACHE && docker images -a --filter='dangling=false' --format '{{.Repository}}:{{.Tag}} {{.ID}}'
+    | xargs -n 2 -t sh -c "test -e $CACHE/$1.tar || docker save $0 | gzip -6 > $CACHE/$1.tar"
+
+cache:
+  - directories:
+    - $CACHE
 
 before_install:
   # Prepare and run a smoke test against the RabbitMQ OCF RA only if
   # the scripts/rabbitmq-server-ha.ocf has changes
   - if ! git diff HEAD~ --name-only | grep -q scripts/rabbitmq-server-ha.ocf; then exit 0; fi
+  - cp scripts/rabbitmq-server-ha.ocf $HOME
+  - chmod +x $HOME/rabbitmq-server-ha.ocf
   - sudo apt-get install -qq git wget
   - echo "Downloading vagrant ${VAGRANT_VERSION}..."
   - >
     wget --no-verbose https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}_x86_64.deb
-    -O /var/tmp/releases/vagrant_${VAGRANT_VERSION}_x86_64.deb
+    -O $CACHE/vagrant_${VAGRANT_VERSION}_x86_64.deb
   - echo "Installing vagrant ${VAGRANT_VERSION}..."
-  - sudo dpkg -i --force-all /var/tmp/releases/vagrant_${VAGRANT_VERSION}_x86_64.deb
-  - vagrant plugin install vagrant-triggers vagrant-cachier
+  - sudo dpkg -i --force-all $CACHE/vagrant_${VAGRANT_VERSION}_x86_64.deb
+  - vagrant plugin install vagrant-triggers
   - echo "Pulling docker images..."
-  - if [ -d /var/tmp/releases ]; then find /var/tmp/releases -type f -name "*.tar" | xargs -I {file} sh -c "zcat {file} | docker load"; fi
+  - if [ -d $CACHE ]; then find $CACHE -type f -name "*.tar" | xargs -I {file} sh -c "zcat {file} | docker load"; fi
   - docker pull $DOCKER_IMAGE
   - git clone https://github.com/bogdando/rabbitmq-cluster-ocf-vagrant
+  - cd rabbitmq-cluster-ocf-vagrant
 
 script:
-  - cd rabbitmq-cluster-ocf-vagrant
-  - vagrant up --provider docker
+  - vagrant up
