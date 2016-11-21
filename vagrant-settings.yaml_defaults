@@ -20,6 +20,7 @@ jepsen_testcase: rabbit-test
 ocf_ra_provider: rabbitmq
 # How to upload the OCF RA : none/copy from/wget stable branch
 #ocf_ra_path: https://raw.githubusercontent.com/rabbitmq/rabbitmq-server-release/master/scripts/rabbitmq-server-ha.ocf
+storage: /var/tmp/rmq
 ocf_ra_path: none
 upload_method: wget
 # which version to use, e.g.: 3.5.7, or false

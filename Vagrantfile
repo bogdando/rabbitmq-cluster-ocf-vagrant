@@ -26,6 +26,7 @@ JEPSEN_TESTCASE = ENV['JEPSEN_TESTCASE'] || cfg ['jepsen_testcase']
 QUIET = ENV['QUIET'] || cfg ['quiet']
 SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg ['smoketest_wait']
 RABBIT_VER = ENV['RABBIT_VER'] || cfg ['rabbit_ver']
+STORAGE= ENV['STORAGE'] || cfg ['storage']
 if USE_JEPSEN == "true"
   SLAVES_COUNT = 4
 else
@@ -54,8 +55,8 @@ end
 corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh")
 rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh",
   ["SEED=n1"])
-rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh /tmp/rmq-ha-pol")
-rabbit_install = shell_script("/vagrant/vagrant_script/rabbit_install.sh", [], [RABBIT_VER])
+rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh #{STORAGE}/rmq-ha-pol")
+rabbit_install = shell_script("/vagrant/vagrant_script/rabbit_install.sh", ["STORAGE=#{STORAGE}"], [RABBIT_VER])
 rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq/")
 rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitmq/")
 
@@ -63,7 +64,7 @@ rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitm
 # and got to the UCA packages
 rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
   ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}",
-   "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}"])
+   "STORAGE=#{STORAGE}", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}"])
 
 # Setup docker dropins, lein, jepsen and hosts/ssh access for it
 jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
@@ -142,7 +143,7 @@ Vagrant.configure(2) do |config|
       config.vm.provider :docker do |d, override|
         d.name = "n0"
         d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged", "--ip=#{IP24NET}.254",
-          "--memory=256", "--cpu-shares=200",
+          "--memory=256M", "--cpu-shares=200",
           "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n0' } do
@@ -168,7 +169,7 @@ Vagrant.configure(2) do |config|
     config.vm.provider :docker do |d, override|
       d.name = "n1"
       d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged",
-        "--memory=256", "--cpu-shares=200",
+        "--memory=256M", "--cpu-shares=200",
         "--ip=#{IP24NET}.2", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
     end
     config.trigger.after :up, :option => { :vm => 'n1' } do
@@ -186,7 +187,8 @@ Vagrant.configure(2) do |config|
       config.vm.host_name = "n#{index}"
       config.vm.provider :docker do |d, override|
         d.name = "n#{index}"
-        d.create_args = ["--stop-signal=SIGKILL", "--shm-size=500m", "-i", "-t", "--privileged",
+        d.create_args = ["--stop-signal=SIGKILL", "-i", "-t", "--privileged",
+          "--memory=256M", "--cpu-shares=200",
           "--ip=#{IP24NET}.#{ip_ind}", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => "n#{index}" } do

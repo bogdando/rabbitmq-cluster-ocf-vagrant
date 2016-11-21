@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 # Configures the rabbitmq OCF primitive
 # wait for the crmd to become ready, wait for a given $SEED node.
 # Protect from an incident running on hosts which aren't n1, n2, etc.
