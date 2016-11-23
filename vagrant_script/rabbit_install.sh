@@ -9,6 +9,6 @@ hostname | grep -q "^n[0-9]\+"
 [ "$1" = "false" ] && exit 0
 mkdir -p $STORAGE
 file="rabbitmq-server_$1-1_all.deb"
-wget "http://www.rabbitmq.com/releases/rabbitmq-server/v$1/${file}" -O "${STORAGE}/${file}"
+[ -f "${STORAGE}/${file}" ] || wget "http://www.rabbitmq.com/releases/rabbitmq-server/v$1/${file}" -O "${STORAGE}/${file}"
 dpkg -i "${STORAGE}/${file}"
 exit $?
