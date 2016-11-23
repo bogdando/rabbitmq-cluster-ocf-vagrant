@@ -12,6 +12,7 @@ docker_cmd: /sbin/init
 # Docker mounts as a list or a ws separated
 docker_mounts:
   - jepsen:/jepsen
+docker_driver: overlay2
 # which app to test with jepsen, e.g. rabbitmq, jepsen, meowdb
 # leave empty to run all of the test cases for the app
 jepsen_app: rabbitmq_ocf_pcmk

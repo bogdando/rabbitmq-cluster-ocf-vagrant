@@ -28,9 +28,8 @@ env:
 
 before_cache:
   # Save tagged docker images
-  - >
-    mkdir -p "$CACHE" && docker images -a --filter='dangling=false' --format '{{.Repository}}:{{.Tag}} {{.ID}}'
-    | xargs -n 2 -t sh -c "test -e $CACHE/$1.tar || docker save $0 | gzip -6 > $CACHE/$1.tar"
+  - mkdir -p $CACHE
+  - docker save $(docker images -a --filter='dangling=false' --format '{{.Repository}}:{{.Tag}} {{.ID}}') -o $CACHE/all.tar
 
 cache:
   - directories:
@@ -41,7 +40,7 @@ before_install:
   # the scripts/rabbitmq-server-ha.ocf has changes
   - if ! git diff HEAD~ --name-only | grep -q scripts/rabbitmq-server-ha.ocf; then exit 0; fi
   # Load cached docker images
-  - if [ -d "${CACHE}" ]; then find "${CACHE}" -type f -name "*.tar" | xargs -I {} sh -c "zcat {} | docker load"; fi
+  - if [ -f $CACHE/all.tar ]; then docker load < $CACHE/all.tar; fi
   - cp -f scripts/rabbitmq-server-ha.ocf "$HOME/$OCF_RA_PROVIDER"
   - chmod +x "$HOME/$OCF_RA_PROVIDER"
   - sudo apt-get install -qq git wget

@@ -17,6 +17,7 @@ IP24NET = ENV['IP24NET'] || cfg['ip24net']
 DOCKER_IMAGE = ENV['DOCKER_IMAGE'] || cfg['docker_image']
 DOCKER_CMD = ENV['DOCKER_CMD'] || cfg['docker_cmd']
 DOCKER_MOUNTS = ENV['DOCKER_MOUNTS'] || cfg['docker_mounts']
+DOCKER_DRIVER = ENV['DOCKER_DRIVER'] || cfg['docker_driver']
 OCF_RA_PROVIDER = ENV['OCF_RA_PROVIDER'] || cfg['ocf_ra_provider']
 OCF_RA_PATH = ENV['OCF_RA_PATH'] || cfg['ocf_ra_path']
 UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg ['upload_method']
@@ -66,7 +67,8 @@ rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
 
 # Setup docker dropins, lein, jepsen and hosts/ssh access for it
 jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
-docker_dropins = shell_script("/vagrant/vagrant_script/conf_docker_dropins.sh")
+docker_dropins = shell_script("/vagrant/vagrant_script/conf_docker_dropins.sh",
+  ["DOCKER_DRIVER=#{DOCKER_DRIVER}"])
 pcmk_dropins = shell_script("/vagrant/vagrant_script/conf_pcmk_dropins.sh")
 lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", ["PURGE=true"],
   [JEPSEN_APP, JEPSEN_TESTCASE], "1>&2")
