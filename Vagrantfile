@@ -60,8 +60,6 @@ rabbit_install = shell_script("/vagrant/vagrant_script/rabbit_install.sh", ["STO
 rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq/")
 rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitmq/")
 
-# FIXME(bogdando) remove rendering rabbitmq OCF script setup after v3.5.7 released
-# and got to the UCA packages
 rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
   ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}",
    "STORAGE=#{STORAGE}", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}"])
