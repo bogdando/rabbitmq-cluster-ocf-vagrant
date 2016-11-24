@@ -16,5 +16,4 @@ printf "%b\n" "[Service]\nExecStart=" > "${drop_in}${override}"
 grep -E '^ExecStart' $unit | sed -e 's_$_& -g /jepsen\ --storage-driver='"${DOCKER_DRIVER}"'_' >> "${drop_in}${override}"
 
 systemctl daemon-reload
-pkill -f -9 docker
-systemctl start docker
+systemctl restart docker

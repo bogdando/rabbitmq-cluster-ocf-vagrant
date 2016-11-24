@@ -58,7 +58,7 @@ def docker_exec (name, script)
 end
 
 # Render a rabbitmq config and a pacemaker primitive configuration with a seed node n1
-corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh")
+corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", ["CNT=#{SLAVES_COUNT+1}"])
 rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh",
   ["SEED=n1", "STORAGE=#{STORAGE}", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}"])
 rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh #{STORAGE}/rmq-ha-pol")
@@ -75,7 +75,7 @@ jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
 docker_dropins = shell_script("/vagrant/vagrant_script/conf_docker_dropins.sh",
   ["DOCKER_DRIVER=#{DOCKER_DRIVER}"])
 pcmk_dropins = shell_script("/vagrant/vagrant_script/conf_pcmk_dropins.sh")
-lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", ["PURGE=true", "NODES=\"#{NODES}\""],
+lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", ["PURGE=true", "NODES='#{NODES}'"],
   [JEPSEN_APP, JEPSEN_TESTCASE], "1>&2")
 ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh",[], [SLAVES_COUNT+1], "1>&2")
 root_login = shell_script("/vagrant/vagrant_script/conf_root_login.sh")
