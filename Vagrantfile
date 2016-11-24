@@ -20,18 +20,23 @@ DOCKER_MOUNTS = ENV['DOCKER_MOUNTS'] || cfg['docker_mounts']
 DOCKER_DRIVER = ENV['DOCKER_DRIVER'] || cfg['docker_driver']
 OCF_RA_PROVIDER = ENV['OCF_RA_PROVIDER'] || cfg['ocf_ra_provider']
 OCF_RA_PATH = ENV['OCF_RA_PATH'] || cfg['ocf_ra_path']
-UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg ['upload_method']
-USE_JEPSEN = ENV['USE_JEPSEN'] || cfg ['use_jepsen']
-JEPSEN_APP = ENV['JEPSEN_APP'] || cfg ['jepsen_app']
-JEPSEN_TESTCASE = ENV['JEPSEN_TESTCASE'] || cfg ['jepsen_testcase']
-QUIET = ENV['QUIET'] || cfg ['quiet']
-SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg ['smoketest_wait']
-RABBIT_VER = ENV['RABBIT_VER'] || cfg ['rabbit_ver']
-STORAGE= ENV['STORAGE'] || cfg ['storage']
+UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg['upload_method']
+USE_JEPSEN = ENV['USE_JEPSEN'] || cfg['use_jepsen']
+JEPSEN_APP = ENV['JEPSEN_APP'] || cfg['jepsen_app']
+JEPSEN_TESTCASE = ENV['JEPSEN_TESTCASE'] || cfg['jepsen_testcase']
+QUIET = ENV['QUIET'] || cfg['quiet']
+SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg['smoketest_wait']
+RABBIT_VER = ENV['RABBIT_VER'] || cfg['rabbit_ver']
+STORAGE= ENV['STORAGE'] || cfg['storage']
+NODES=ENV['NODES'] || cfg['nodes'] || 'n1 n2 n3 n4 n5'
 if USE_JEPSEN == "true"
-  SLAVES_COUNT = 4
+  SLAVES_COUNT = NODES.split(' ').length - 1
+  CPU = ENV['CPU'] || (1000 / (SLAVES_COUNT + 1) rescue 200)
+  MEM = ENV['MEMORY'] || '256M'
 else
   SLAVES_COUNT = (ENV['SLAVES_COUNT'] || cfg['slaves_count']).to_i
+  CPU = ENV['CPU'] || cfg['cpu']
+  MEM = ENV['MEMORY'] || cfg['memory']
 end
 if QUIET == "true"
   REDIRECT=">/dev/null 2>&1"
@@ -70,7 +75,7 @@ jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
 docker_dropins = shell_script("/vagrant/vagrant_script/conf_docker_dropins.sh",
   ["DOCKER_DRIVER=#{DOCKER_DRIVER}"])
 pcmk_dropins = shell_script("/vagrant/vagrant_script/conf_pcmk_dropins.sh")
-lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", ["PURGE=true"],
+lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", ["PURGE=true", "NODES=\"#{NODES}\""],
   [JEPSEN_APP, JEPSEN_TESTCASE], "1>&2")
 ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh",[], [SLAVES_COUNT+1], "1>&2")
 root_login = shell_script("/vagrant/vagrant_script/conf_root_login.sh")
@@ -143,7 +148,7 @@ Vagrant.configure(2) do |config|
       config.vm.provider :docker do |d, override|
         d.name = "n0"
         d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged", "--ip=#{IP24NET}.254",
-          "--memory=256M", "--cpu-shares=200",
+          "--memory=#{MEM}", "--cpu-shares=#{CPU}",
           "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => 'n0' } do
@@ -169,7 +174,7 @@ Vagrant.configure(2) do |config|
     config.vm.provider :docker do |d, override|
       d.name = "n1"
       d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged",
-        "--memory=256M", "--cpu-shares=200",
+        "--memory=#{MEM}", "--cpu-shares=#{CPU}",
         "--ip=#{IP24NET}.2", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
     end
     config.trigger.after :up, :option => { :vm => 'n1' } do
@@ -188,7 +193,7 @@ Vagrant.configure(2) do |config|
       config.vm.provider :docker do |d, override|
         d.name = "n#{index}"
         d.create_args = ["--stop-signal=SIGKILL", "-i", "-t", "--privileged",
-          "--memory=256M", "--cpu-shares=200",
+          "--memory=#{MEM}", "--cpu-shares=#{CPU}",
           "--ip=#{IP24NET}.#{ip_ind}", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
       config.trigger.after :up, :option => { :vm => "n#{index}" } do
