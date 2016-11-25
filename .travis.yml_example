@@ -9,22 +9,32 @@ git:
 env:
   global:
     TRAVIS_BRANCH=travis_ocf_ra
-    RABBIT_VER=3.6.5
+    RABBIT_VER=false
     VAGRANT_VERSION=1.8.7
     DOCKER_IMAGE=bogdando/rabbitmq-cluster-ocf-xenial
     UPLOAD_METHOD=none
     OCF_RA_PROVIDER=rabbitmq
     CACHE=/var/tmp/releases
     DOCKER_MOUNTS="${HOME}/${OCF_RA_PROVIDER}:/usr/lib/ocf/resource.d/${OCF_RA_PROVIDER}/${OCF_RA_PROVIDER}:ro jepsen:/jepsen"
+    DOCKER_DRIVER=aufs
   matrix:
     - >-
       USE_JEPSEN=false
-      QUIET=false
-      SLAVES_COUNT=1
+      QUIET=true
+      SMOKETEST_WAIT=360
+      CPU=500
+      MEMORY=512M
     - >-
       USE_JEPSEN=true
-      QUIET=true
-      SLAVES_COUNT=4
+      QUIET=false
+      SMOKETEST_WAIT=900
+      CPU=250
+      MEMORY=320M
+      NODES="n1 n2 n3"
+
+matrix:
+  allow_failures:
+    - env: USE_JEPSEN=true QUIET=false SMOKETEST_WAIT=900 CPU=250 MEMORY=320M NODES="n1 n2 n3"
 
 before_cache:
   # Save tagged docker images
@@ -46,8 +56,9 @@ before_install:
   - sudo apt-get install -qq git wget
   - echo "Downloading vagrant ${VAGRANT_VERSION}..."
   - >
+    if [ ! -f $CACHE/vagrant_${VAGRANT_VERSION}_x86_64.deb ]; then
     wget --no-verbose https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}_x86_64.deb
-    -O $CACHE/vagrant_${VAGRANT_VERSION}_x86_64.deb
+    -O $CACHE/vagrant_${VAGRANT_VERSION}_x86_64.deb; fi
   - echo "Installing vagrant ${VAGRANT_VERSION}..."
   - sudo dpkg -i --force-all $CACHE/vagrant_${VAGRANT_VERSION}_x86_64.deb
   - vagrant plugin install vagrant-triggers
