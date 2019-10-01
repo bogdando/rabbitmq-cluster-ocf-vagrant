@@ -1,8 +1,9 @@
 # rabbitmq-cluster-ocf-vagrant
 
 [Packer Build Scripts](https://github.com/bogdando/packer-atlas-example)
-| [Docker Image (Ubuntu 15.10)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf-wily/)
 | [Docker Image (Ubuntu 16.04)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf-xenial/)
+| [Docker Image (Debian, newest Pacemaker 2.0.2, Corosync 3.0.2 and RabbitMQ 3.6.15)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf/)
+
 
 A Vagrantfile to bootstrap and somketest a RabbitMQ cluster by the pacemaker
 [OCF RA](https://github.com/rabbitmq/rabbitmq-server/blob/master/scripts/rabbitmq-server-ha.ocf).
