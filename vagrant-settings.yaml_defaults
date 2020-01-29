@@ -1,8 +1,10 @@
 # copy it to vagrant-settings.yaml then Vagrantfile
 # will use values from this file
 
-# Number of additional nodes to the n1 to be run and cgroup limits
+# Number of nodes (except n1 for master and n0 for Jepsen runner)
+# and its cgroup limits
 slaves_count: 1
+nodes: "n1 n2"
 cpu: 500
 memory: 512M
 # 1st 3 numbers of a required /24 IPv4 docker net
@@ -19,18 +21,20 @@ docker_driver: overlay2
 # leave empty to run all of the test cases for the app
 jepsen_app: rabbitmq_ocf_pcmk
 jepsen_testcase: rabbit-test
-# Which provider for the OCF RA under test to use
+# Which provider/type for the OCF RA under test to use
 ocf_ra_provider: rabbitmq
-# How to upload the OCF RA : none/copy from/wget stable branch
-#ocf_ra_path: https://raw.githubusercontent.com/rabbitmq/rabbitmq-server-release/master/scripts/rabbitmq-server-ha.ocf
+ocf_ra_type: rabbitmq-server-ha
 storage: /var/tmp/rmq
+# How to upload the OCF RA : none, copy from ocf_ra_path or wget stable branch
+#ocf_ra_path: https://raw.githubusercontent.com/rabbitmq/rabbitmq-server-release/master/scripts/rabbitmq-server-ha.ocf
 ocf_ra_path: none
-upload_method: wget
-# which version to use, e.g.: 3.5.7, or false
+upload_method: none
+# which RabbitMQ deb version to fetch, e.g.: 3.6.15
+# pick false to use the one from the installed rabbitmq-server package
 rabbit_ver: false
 # smoke test timeout, includes waiting for a cluster
 smoketest_wait: 360
 # run jepsen tests or not
-use_jepsen: "true"
+use_jepsen: true
 # redirect tasks output to /dev/null or not
-quiet: "false"
+quiet: false

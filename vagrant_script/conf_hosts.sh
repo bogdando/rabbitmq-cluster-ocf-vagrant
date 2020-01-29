@@ -17,4 +17,7 @@ while (( "$#" )); do
 done
 echo "Overwriting hosts"
 cp -f /tmp/hosts /etc/hosts
+echo "nameserver 8.8.8.8" > /tmp/resolv.conf
+echo "Overwriting resolv.conf"
+cp -f /tmp/resolv.conf /etc/resolv.conf
 exit 0

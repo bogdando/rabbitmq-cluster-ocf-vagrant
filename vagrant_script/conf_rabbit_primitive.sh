@@ -3,6 +3,7 @@
 # wait for the crmd to become ready, wait for a given $SEED node.
 # Protect from an incident running on hosts which aren't n1, n2, etc.
 OCF_RA_PROVIDER=${OCF_RA_PROVIDER:-rabbitmq}
+OCF_RA_TYPE=${OCF_RA_TYPE:-rabbitmq-server-ha}
 STORAGE=${STORAGE:-/tmp}
 name=$(hostname)
 echo $name | grep -q "^n[0-9]\+"
@@ -10,7 +11,7 @@ echo $name | grep -q "^n[0-9]\+"
 count=0
 while [ $count -lt 160 ]
 do
-  if timeout --signal=KILL 5 crm_attribute --type crm_config --query --name dc-version | grep -q 'dc-version'
+  if timeout --signal=KILL 5 cibadmin -Q
   then
     break
   fi
@@ -32,7 +33,8 @@ if [ "${name}" = "${SEED}" ] ; then
     property cluster-recheck-interval=30s
     commit
 EOF
-    crm --force configure primitive p_rabbitmq-server ocf:$OCF_RA_PROVIDER:$OCF_RA_PROVIDER \
+    crm --force configure primitive p_rabbitmq-server \
+          ocf:$OCF_RA_PROVIDER:$OCF_RA_TYPE \
           params erlang_cookie=DPMDALGUKEOMPTHWPYKC node_port=5672 policy_file=$STORAGE/rmq-ha-pol \
           op monitor interval=30 timeout=180 \
           op monitor interval=27 role=Master timeout=180 \

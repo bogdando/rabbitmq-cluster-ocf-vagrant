@@ -2,7 +2,7 @@
 
 [Packer Build Scripts](https://github.com/bogdando/packer-atlas-example)
 | [Docker Image (Ubuntu 16.04)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf-xenial/)
-| [Docker Image (Debian, newest Pacemaker 2.0.2, Corosync 3.0.2 and RabbitMQ 3.6.15)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf/)
+| [Docker Image (Debian Buster, Pacemaker 2.0.2, Corosync 3.0.2 and RabbitMQ 3.8.7)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf/)
 
 
 A Vagrantfile to bootstrap and somketest a RabbitMQ cluster by the pacemaker
@@ -16,9 +16,6 @@ be updated to handle the latter one as well. Hopefully, we will merge them into
 the single OCF RA solution, eventually.
 
 ## Vagrantfile
-
-Supports libvirt, virtualbox, docker (experimental) providers.
-Required vagrant plugins: vagrant-triggers, vagrant-libvirt.
 
 * Spins up two VM nodes ``[n1, n2]`` with predefined IP addressess
   ``10.10.10.2-3/24`` by default. Use the ``SLAVES_COUNT`` env var, if you need

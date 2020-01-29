@@ -19,17 +19,20 @@ DOCKER_CMD = ENV['DOCKER_CMD'] || cfg['docker_cmd']
 DOCKER_MOUNTS = ENV['DOCKER_MOUNTS'] || cfg['docker_mounts']
 DOCKER_DRIVER = ENV['DOCKER_DRIVER'] || cfg['docker_driver']
 OCF_RA_PROVIDER = ENV['OCF_RA_PROVIDER'] || cfg['ocf_ra_provider']
+OCF_RA_TYPE = ENV['OCF_RA_TYPE'] || cfg['ocf_ra_type']
 OCF_RA_PATH = ENV['OCF_RA_PATH'] || cfg['ocf_ra_path']
 UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg['upload_method']
 USE_JEPSEN = ENV['USE_JEPSEN'] || cfg['use_jepsen']
+jepsen = ["true", "yes"].include?(USE_JEPSEN.to_s.downcase) ? true : false
 JEPSEN_APP = ENV['JEPSEN_APP'] || cfg['jepsen_app']
 JEPSEN_TESTCASE = ENV['JEPSEN_TESTCASE'] || cfg['jepsen_testcase']
 QUIET = ENV['QUIET'] || cfg['quiet']
+silent = ["true", "yes"].include?(QUIET.to_s.downcase) ? true : false
 SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg['smoketest_wait']
 RABBIT_VER = ENV['RABBIT_VER'] || cfg['rabbit_ver']
 STORAGE= ENV['STORAGE'] || cfg['storage']
 NODES=ENV['NODES'] || cfg['nodes'] || 'n1 n2 n3 n4 n5'
-if USE_JEPSEN == "true"
+if jepsen
   SLAVES_COUNT = NODES.split(' ').length - 1
   CPU = ENV['CPU'] || (1000 / (SLAVES_COUNT + 1) rescue 200)
   MEM = ENV['MEMORY'] || '256M'
@@ -38,7 +41,7 @@ else
   CPU = ENV['CPU'] || cfg['cpu']
   MEM = ENV['MEMORY'] || cfg['memory']
 end
-if QUIET == "true"
+if silent
   REDIRECT=">/dev/null 2>&1"
 else
   REDIRECT="2>&1"
@@ -58,7 +61,8 @@ def docker_exec (name, script)
 end
 
 # Render a rabbitmq config and a pacemaker primitive configuration with a seed node n1
-corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", ["CNT=#{SLAVES_COUNT+1}"])
+nodes_list = "[#{NODES.split(' ').join(', ')}]"
+corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", ["CNT=#{SLAVES_COUNT+1}", "NODES='#{nodes_list}'"])
 rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh",
   ["SEED=n1", "STORAGE=#{STORAGE}", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}"])
 rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh #{STORAGE}/rmq-ha-pol")
@@ -67,8 +71,8 @@ rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq
 rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitmq/")
 
 rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
-  ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}",
-   "STORAGE=#{STORAGE}", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}"])
+  ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}", "STORAGE=#{STORAGE}",
+   "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}", "OCF_RA_TYPE=#{OCF_RA_TYPE}"])
 
 # Setup docker dropins, lein, jepsen and hosts/ssh access for it
 jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
@@ -99,24 +103,24 @@ Vagrant.configure(2) do |config|
   # W/a unimplemented docker networking, see
   # https://github.com/mitchellh/vagrant/issues/6667.
   # Create or delete the vagrant net (depends on the vagrant action)
-  config.trigger.before :up do
-    system <<-SCRIPT
-    if ! docker network inspect "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1 ; then
-      docker network create -d bridge \
-        -o "com.docker.network.bridge.enable_icc"="true" \
-        -o "com.docker.network.bridge.enable_ip_masquerade"="true" \
-        -o "com.docker.network.driver.mtu"="1500" \
-        --gateway=#{IP24NET}.1 \
-        --ip-range=#{IP24NET}.0/24 \
-        --subnet=#{IP24NET}.0/24 \
-        "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1
-    fi
-    SCRIPT
+  config.trigger.before :up do |trigger|
+    trigger.only_on = 'n1' # we run on host in fact, but only once
+    trigger.on_error = :continue
+    trigger.run = {inline: "bash -c '\\"\
+      "docker network create -d bridge \\"\
+      "-o 'com.docker.network.bridge.enable_icc'='true' \\"\
+      "-o 'com.docker.network.bridge.enable_ip_masquerade'='true' \\"\
+      "-o 'com.docker.network.driver.mtu'='1500' \\"\
+      "--gateway=#{IP24NET}.1 \\"\
+      "--ip-range=#{IP24NET}.0/24 \\"\
+      "--subnet=#{IP24NET}.0/24 \\"\
+      "vagrant-#{OCF_RA_PROVIDER} >/dev/null 2>&1'"
+    }
   end
-  config.trigger.after :destroy do
-    system <<-SCRIPT
-    docker network rm "vagrant-#{OCF_RA_PROVIDER}" >/dev/null 2>&1
-    SCRIPT
+  config.trigger.after :destroy do |trigger|
+    trigger.only_on = 'n1' # we run on host in fact, but only once
+    trigger.on_error = :continue
+    trigger.run = {inline: "bash -c 'docker network rm vagrant-#{OCF_RA_PROVIDER} >/dev/null 2>&1'"}
   end
 
   config.vm.provider :docker do |d, override|
@@ -151,22 +155,25 @@ Vagrant.configure(2) do |config|
           "--memory=#{MEM}", "--cpu-shares=#{CPU}",
           "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
-      config.trigger.after :up, :option => { :vm => 'n0' } do
-        docker_exec("n0","#{jepsen_setup}")
-        docker_exec("n0","#{hosts_setup}")
-        docker_exec("n0","#{ssh_setup}")
-        # Wait and run a smoke test against a cluster, shall not fail
-        docker_exec("n0","#{rabbit_test_remote}") or raise "Smoke test: FAILED to assemble a cluster"
-        # this runs all of the jepsen tests for the given app, and it *may* fail
-        docker_exec("n0","#{docker_dropins}")
-        docker_exec("n0","#{lein_test}")
-        # Verify if the cluster was recovered, shall not fail
-        docker_exec("n0","#{rabbit_test_remote}")
+      config.trigger.after :up do |trigger|
+        trigger.only_on = 'n0'
+        trigger.ruby do |env, machine|
+          docker_exec("n0","#{jepsen_setup}")
+          docker_exec("n0","#{hosts_setup}")
+          docker_exec("n0","#{ssh_setup}")
+          # Wait and run a smoke test against a cluster, shall not fail
+          docker_exec("n0","#{rabbit_test_remote}") or raise "Smoke test: FAILED to assemble a cluster"
+          # this runs all of the jepsen tests for the given app, and it *may* fail
+          docker_exec("n0","#{docker_dropins}")
+          docker_exec("n0","#{lein_test}")
+          # Verify if the cluster was recovered, shall not fail
+          docker_exec("n0","#{rabbit_test_remote}")
+        end
       end
     end
   end
 
-  COMMON_TASKS = [root_login, ssh_setup, corosync_setup, pcmk_dropins, rabbit_install, rabbit_ocf_setup,
+  COMMON_TASKS = [root_login, ssh_setup, hosts_setup, corosync_setup, pcmk_dropins, rabbit_install, rabbit_ocf_setup,
                   rabbit_primitive_setup, rabbit_ha_pol_setup, rabbit_conf_setup, rabbit_env_setup]
 
   config.vm.define "n1", primary: true do |config|
@@ -177,10 +184,13 @@ Vagrant.configure(2) do |config|
         "--memory=#{MEM}", "--cpu-shares=#{CPU}",
         "--ip=#{IP24NET}.2", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
     end
-    config.trigger.after :up, :option => { :vm => 'n1' } do
-      COMMON_TASKS.each { |s| docker_exec("n1","#{s}") }
-      # Wait and run a smoke test against a cluster, shall not fail
-      docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN == "true"
+    config.trigger.after :up do |trigger|
+      trigger.only_on = 'n1'
+      trigger.ruby do |env, machine|
+        COMMON_TASKS.each { |s| docker_exec("n1","#{s}") }
+        # Wait and run a smoke test against a cluster, shall not fail
+        docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN == "true"
+      end
     end
   end
 
@@ -196,8 +206,15 @@ Vagrant.configure(2) do |config|
           "--memory=#{MEM}", "--cpu-shares=#{CPU}",
           "--ip=#{IP24NET}.#{ip_ind}", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
-      config.trigger.after :up, :option => { :vm => "n#{index}" } do
-        COMMON_TASKS.each { |s| docker_exec("n#{index}","#{s}") }
+      config.trigger.after :up do |trigger|
+        trigger.ruby do |env, machine|
+          COMMON_TASKS.each { |s| docker_exec("n#{index}","#{s}") }
+        end
+      end
+      config.trigger.before :destroy do |trigger|
+        trigger.only_on = "n#{index}"
+        trigger.run = {inline: "docker rm -f n#{index}"}
+        trigger.on_error = :continue
       end
     end
   end
