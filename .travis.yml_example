@@ -15,7 +15,7 @@ env:
     OCF_RA_PROVIDER=rabbitmq
     OCF_RA_TYPE=rabbitmq-server-ha
     STORAGE=/var/tmp/rmq
-    POLFILE=${STORAGE}/policy_file.sh
+    POLICY_BASE64=foobarbase64unwrapped
     CACHE=/var/tmp/releases
     DOCKER_MOUNTS="${HOME}/${OCF_RA_PROVIDER}:/usr/lib/ocf/resource.d/${OCF_RA_PROVIDER}/${OCF_RA_PROVIDER}:ro jepsen:/jepsen"
     DOCKER_DRIVER=aufs
@@ -66,11 +66,6 @@ before_install:
   - vagrant plugin install vagrant-triggers
   - echo "Pulling docker images..."
   - docker pull $DOCKER_IMAGE
-  - >
-    echo
-    '${OCF_RESKEY_ctl} set_policy ha-all "jepsen." \'{"ha-mode":"exactly", "ha-params":2, "ha-sync-mode":"automatic"}\'' >
-    ${STORAGE}/policy_file.sh
-  - chmod +x ${STORAGE}/policy_file.sh
   - git clone https://github.com/bogdando/rabbitmq-cluster-ocf-vagrant
   - cd rabbitmq-cluster-ocf-vagrant
 

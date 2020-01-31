@@ -31,6 +31,7 @@ silent = ["true", "yes"].include?(QUIET.to_s.downcase) ? true : false
 SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg['smoketest_wait']
 STORAGE= ENV['STORAGE'] || cfg['storage']
 POLFILE=ENV['POLFILE'] || cfg['policy_file']
+POLICY_BASE64=ENV['POLICY_BASE64'] || cfg['policy_base64']
 NODES=ENV['NODES'] || cfg['nodes'] || 'n1 n2 n3 n4 n5'
 if jepsen
   SLAVES_COUNT = NODES.split(' ').length - 1
@@ -64,7 +65,7 @@ end
 nodes_list = "[#{NODES.split(' ').join(', ')}]"
 corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", ["CNT=#{SLAVES_COUNT+1}", "NODES='#{nodes_list}'"])
 rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh",
-  ["SEED=n1", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}", "POLFILE=#{POLFILE}"])
+  ["SEED=n1", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}", "POLFILE=#{POLFILE}", "POLICY_BASE64=#{POLICY_BASE64}"])
 rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq/")
 rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitmq/")
 
