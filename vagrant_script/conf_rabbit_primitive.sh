@@ -4,7 +4,7 @@
 # Protect from an incident running on hosts which aren't n1, n2, etc.
 OCF_RA_PROVIDER=${OCF_RA_PROVIDER:-rabbitmq}
 OCF_RA_TYPE=${OCF_RA_TYPE:-rabbitmq-server-ha}
-STORAGE=${STORAGE:-/tmp}
+POLFILE=${POLFILE:-/usr/local/sbin/set_rabbitmq_policy}
 name=$(hostname)
 echo $name | grep -q "^n[0-9]\+"
 [ $? -eq 0 ] || exit 1
@@ -35,7 +35,7 @@ if [ "${name}" = "${SEED}" ] ; then
 EOF
     crm --force configure primitive p_rabbitmq-server \
           ocf:$OCF_RA_PROVIDER:$OCF_RA_TYPE \
-          params erlang_cookie=DPMDALGUKEOMPTHWPYKC node_port=5672 policy_file=$STORAGE/rmq-ha-pol \
+          params erlang_cookie=DPMDALGUKEOMPTHWPYKC node_port=5672 policy_file=$POLFILE \
           op monitor interval=30 timeout=180 \
           op monitor interval=27 role=Master timeout=180 \
           op start interval=0 timeout=180 \

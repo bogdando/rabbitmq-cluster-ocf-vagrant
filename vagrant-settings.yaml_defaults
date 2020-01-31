@@ -24,14 +24,12 @@ jepsen_testcase: rabbit-test
 # Which provider/type for the OCF RA under test to use
 ocf_ra_provider: rabbitmq
 ocf_ra_type: rabbitmq-server-ha
-storage: /var/tmp/rmq
+policy_file: /vagrant/conf/set_rabbitmq_policy.sh
 # How to upload the OCF RA : none, copy from ocf_ra_path or wget stable branch
 #ocf_ra_path: https://raw.githubusercontent.com/rabbitmq/rabbitmq-server-release/master/scripts/rabbitmq-server-ha.ocf
 ocf_ra_path: none
 upload_method: none
-# which RabbitMQ deb version to fetch, e.g.: 3.6.15
-# pick false to use the one from the installed rabbitmq-server package
-rabbit_ver: false
+storage: /var/tmp/rmq
 # smoke test timeout, includes waiting for a cluster
 smoketest_wait: 360
 # run jepsen tests or not

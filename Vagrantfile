@@ -29,8 +29,8 @@ JEPSEN_TESTCASE = ENV['JEPSEN_TESTCASE'] || cfg['jepsen_testcase']
 QUIET = ENV['QUIET'] || cfg['quiet']
 silent = ["true", "yes"].include?(QUIET.to_s.downcase) ? true : false
 SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg['smoketest_wait']
-RABBIT_VER = ENV['RABBIT_VER'] || cfg['rabbit_ver']
 STORAGE= ENV['STORAGE'] || cfg['storage']
+POLFILE=ENV['POLFILE'] || cfg['policy_file']
 NODES=ENV['NODES'] || cfg['nodes'] || 'n1 n2 n3 n4 n5'
 if jepsen
   SLAVES_COUNT = NODES.split(' ').length - 1
@@ -64,14 +64,12 @@ end
 nodes_list = "[#{NODES.split(' ').join(', ')}]"
 corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", ["CNT=#{SLAVES_COUNT+1}", "NODES='#{nodes_list}'"])
 rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh",
-  ["SEED=n1", "STORAGE=#{STORAGE}", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}"])
-rabbit_ha_pol_setup = shell_script("cp /vagrant/conf/set_rabbitmq_policy.sh #{STORAGE}/rmq-ha-pol")
-rabbit_install = shell_script("/vagrant/vagrant_script/rabbit_install.sh", ["STORAGE=#{STORAGE}"], [RABBIT_VER])
+  ["SEED=n1", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}", "POLFILE=#{POLFILE}"])
 rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq/")
 rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitmq/")
 
 rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
-  ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}", "STORAGE=#{STORAGE}",
+  ["UPLOAD_METHOD=#{UPLOAD_METHOD}", "OCF_RA_PATH=#{OCF_RA_PATH}", 
    "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}", "OCF_RA_TYPE=#{OCF_RA_TYPE}"])
 
 # Setup docker dropins, lein, jepsen and hosts/ssh access for it
@@ -132,7 +130,9 @@ Vagrant.configure(2) do |config|
 
   # Prepare docker volumes for nested containers
   docker_volumes = [ "-v", "/sys/fs/cgroup:/sys/fs/cgroup",
-    "-v", "/var/run/docker.sock:/var/run/docker.sock" ]
+    "-v", "/var/run/docker.sock:/var/run/docker.sock",
+    "-v", "#{STORAGE}:#{STORAGE}:ro"
+  ]
   if DOCKER_MOUNTS != 'none'
     if DOCKER_MOUNTS.kind_of?(Array)
       mounts = DOCKER_MOUNTS
@@ -173,8 +173,8 @@ Vagrant.configure(2) do |config|
     end
   end
 
-  COMMON_TASKS = [root_login, ssh_setup, hosts_setup, corosync_setup, pcmk_dropins, rabbit_install, rabbit_ocf_setup,
-                  rabbit_primitive_setup, rabbit_ha_pol_setup, rabbit_conf_setup, rabbit_env_setup]
+  COMMON_TASKS = [root_login, ssh_setup, hosts_setup, corosync_setup, pcmk_dropins, rabbit_ocf_setup,
+                  rabbit_primitive_setup, rabbit_conf_setup, rabbit_env_setup]
 
   config.vm.define "n1", primary: true do |config|
     config.vm.host_name = "n1"
