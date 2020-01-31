@@ -67,10 +67,9 @@ before_install:
   - echo "Pulling docker images..."
   - docker pull $DOCKER_IMAGE
   - >
-    cat > ${STORAGE}/policy_file.sh << EOF
-    ocf_log info "\${LH} Setting HA policy for all queues"
-    \${OCF_RESKEY_ctl} set_policy ha-all "jepsen." '{"ha-mode":"exactly", "ha-params":3, "ha-sync-mode":"automatic"}'
-    EOF
+    echo
+    '${OCF_RESKEY_ctl} set_policy ha-all "jepsen." \'{"ha-mode":"exactly", "ha-params":2, "ha-sync-mode":"automatic"}\'' >
+    ${STORAGE}/policy_file.sh
   - chmod +x ${STORAGE}/policy_file.sh
   - git clone https://github.com/bogdando/rabbitmq-cluster-ocf-vagrant
   - cd rabbitmq-cluster-ocf-vagrant
