@@ -3,11 +3,8 @@
 # Launch lein to test a given app ($1) and a given test ($2) or all.
 # Stop & remove the main jepsen container, if env $PURGE=true
 [ "$1" ] || exit 1
-if ! docker images | grep -q 'pandeiro/lein'
-then
-  echo "Pull lein container"
-  docker pull pandeiro/lein
-fi
+echo "Pull lein container"
+docker pull docker.io/bogdando/lein:latest
 
 # Try to start the jepsen container w/o purging it
 docker start jepsen || PURGE=true
@@ -24,7 +21,7 @@ if [ "${PURGE}" = "true" ]; then
     -v /jepsen/jepsen/jepsen:/app \
     --entrypoint /bin/bash \
     --name jepsen-build -h jepsen \
-    pandeiro/lein:latest -c "lein deps && lein compile && lein uberjar; sync"
+    docker.io/bogdando/lein:latest -c "lein deps && lein compile && lein uberjar; sync"
   sync
 
   # Run lein for jepsen tests, using the custom build from the target dir mounted
@@ -39,7 +36,7 @@ if [ "${PURGE}" = "true" ]; then
     -e "NODES=\"${NODES}\"" \
     --entrypoint /bin/bash \
     --name jepsen -h jepsen \
-    pandeiro/lein:latest
+    docker.io/bogdando/lein:latest
 
   dir_jepsen=resources/jepsen/jepsen/${JEPSON_VER}
   docker exec -it jepsen bash -c "mkdir -p $dir_jepsen"
