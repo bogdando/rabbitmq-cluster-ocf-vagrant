@@ -1,11 +1,10 @@
 # rabbitmq-cluster-ocf-vagrant
 
 [Packer Build Scripts](https://github.com/bogdando/packer-atlas-example)
-| [Docker Image (Ubuntu 16.04)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf-xenial/)
-| [Docker Image (Debian Buster, Pacemaker 2.0.2, Corosync 3.0.2 and RabbitMQ 3.8.7)](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf/)
+| [Docker Image](https://hub.docker.com/r/bogdando/rabbitmq-cluster-ocf/)
 
 
-A Vagrantfile to bootstrap and somketest a RabbitMQ cluster by the pacemaker
+A Vagrantfile to bootstrap and smoketest a RabbitMQ cluster by the pacemaker
 [OCF RA](https://github.com/rabbitmq/rabbitmq-server/blob/master/scripts/rabbitmq-server-ha.ocf).
 For details, see the [docs](http://www.rabbitmq.com/pacemaker.html).
 
@@ -40,12 +39,7 @@ the command ``vagrant ssh`` not working. Instead use the
 
 ## Known issues
 
-* Pacemaker >=1.1.12 seems behave better in containers, although things may be
-  buggy: ``crm_node -l`` may start reporting empty nodes list, then rabbitmq OCF
-  RA thinks the rabbit node is running outside of cluster and restarts. This was
-  seen when using custom docker run commands, which are not ``/sbin/init``.
-
-* For the docker provider, a networking is [not implemented](https://github.com/mitchellh/vagrant/issues/6667)
+* Vagrant docker provider networking is [not implemented](https://github.com/mitchellh/vagrant/issues/6667)
   and there is no [docker-exec privisioner](https://github.com/mitchellh/vagrant/issues/4179)
   to replace the ssh-based one. So I put ugly workarounds all around to make
   things working more or less.
@@ -62,8 +56,14 @@ the command ``vagrant ssh`` not working. Instead use the
 * The vagrant libvirt provider (plugin) may be
   [broken](https://github.com/fog/fog-libvirt/issues/16) for some cases. A w/a:
   ```
-  vagrant plugin install --plugin-version 0.0.3 fog-libvirt
+  vagrant plugin install --plugin-version 0.6.0 fog-libvirt
   ```
+  or maybe via your RVM env and Ruby 2.6.0 to get the latest version:
+  ```
+  ~/.rvm/gems/ruby-2.6.0/wrappers/vagrant plugin install fog-libvirt
+  ```
+  (last time tested with Vagrant 2.2.16, make sure there is no vagrant-libvirt
+   gem, nor the vagrant plugin installed!)
 
 * If the terminal session looks "broken" after the ``vagrant up/down``, issue a
   ``reset`` command as well.
@@ -138,7 +138,7 @@ scratch as well.
 To collect logs at the host OS under the `/tmp/results.tar.gz`, use the command like:
 ```
 docker run -it --rm -e "GZIP=-9" --entrypoint /bin/tar -v jepsen:/results:ro -v
-/tmp:/out ubuntu cvzf /out/results.tar.gz /results/logs
+/tmp:/out debian:latest cvzf /out/results.tar.gz /results/logs
 ```
 
 To run lein commmands, use ``docker exec -it jepsen lein foo`` from the control node.
@@ -159,8 +159,6 @@ bash -xx /vagrant/vagrant_script/lein_test.sh rabbitmq_ocf_pcmk
 
 There is an example dummy job ``.travis.yml_example``, which only deploys
 from the given branch of the rabbitmq-server OCF RA and does a smoke test.
-See also an example [job config](https://github.com/bogdando/rabbitmq-server/blob/rabbit_ocf_ra_travis/.travis.yml)
-and [job script](https://github.com/bogdando/rabbitmq-server/blob/rabbit_ocf_ra_travis/scripts/travis_test_ocf_ra.sh)
-for the forked rabbitmq-server repository. And here is how the
-[successful build example](https://travis-ci.org/bogdando/rabbitmq-server/builds/109353708)
-may look like.
+See also an upstream [job config](https://github.com/rabbitmq/rabbitmq-server-release/blob/f92d36d30e2cf0258a4da4986360e448421d61a4/.travis.yml)
+And here is a [build example](https://travis-ci.org/github/bogdando/rabbitmq-server-release/jobs/645853974)
+(on the clonned TravisCI upstream infra).
