@@ -4,14 +4,15 @@
 # Wait for a given $WAIT env var
 # run on remote node, if the $AT_NODE specified.
 # When run localy, provide crm_mon outputs as well.
+set -o pipefail
 [ -z "${1}" ] && exit 0
-rabbit_nodes=""
-for i in $(seq 1 $1); do
-  rabbit_nodes="rabbit@n$i ${rabbit_nodes}"
+rabbit_nodes="rabbit@n1"
+for i in $(seq 2 $1); do
+  rabbit_nodes="${rabbit_nodes} rabbit@n$i"
 done
 
 echo root > /tmp/sshpass
-cmd='timeout --signal=KILL 10 rabbitmqctl cluster_status'
+cmd="timeout --signal=KILL 10 rabbitmqctl cluster_status --formatter json"
 [ "${AT_NODE}" ] && cmd="sshpass -f /tmp/sshpass ssh ${AT_NODE} ${cmd}"
 
 count=0
@@ -20,15 +21,9 @@ throw=1
 WAIT="${WAIT:-180}"
 while [ $count -lt $WAIT ]
 do
-  output=`${cmd} 2>/dev/null`
+  output=`${cmd}|python3 -c 'import sys,json;n=json.loads(sys.stdin.read());print(" ".join(sorted(dict(zip(n["running_nodes"],n["running_nodes"])).keys())))' 2>/dev/null`
   rc=$?
-  state=0
-  for n in $rabbit_nodes; do
-    [ "${n}" ] || continue
-    echo "${output}" | grep -q "running_nodes.*${n}"
-    [ $? -eq 0 ] || state=1
-  done
-  if [ $rc -eq 0 -a $state -eq 0 ]; then
+  if [ $rc -eq 0 -a "$output" = "$rabbit_nodes" ]; then
     result="PASSED"
     throw=0
     break
