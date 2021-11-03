@@ -1,5 +1,6 @@
 #!/bin/sh
 # Clone/fetch jepsen fork and branch $1
+rm -rf /jepsen
 mkdir -p /jepsen
 cd /jepsen
 branch="${1:-dev}"
