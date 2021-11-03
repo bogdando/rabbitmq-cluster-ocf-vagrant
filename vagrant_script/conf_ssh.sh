@@ -9,8 +9,8 @@ chmod 700 /root/.ssh
 touch /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
 rm -f /tmp/known_hosts
+(while true; do mkdir -p /run/sshd; sleep 3; done) & disown
 while true; do
-  mkdir -p /run/sshd
   entry="$(ssh-keyscan -t rsa $me)"
   [ "${entry}" ] && break
   echo "${me} is waiting for SSH keys to arrive o_O"
