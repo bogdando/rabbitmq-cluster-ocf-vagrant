@@ -36,7 +36,7 @@ if [ "${name}" = "${SEED}" ] ; then
 EOF
     crm --force configure primitive p_rabbitmq-server \
           ocf:$OCF_RA_PROVIDER:$OCF_RA_TYPE \
-          params erlang_cookie=DPMDALGUKEOMPTHWPYKC node_port=5672 policy_file=$POLFILE \
+          params erlang_cookie=DPMDALGUKEOMPTHWPYKC node_port=5672 policy_file=$POLFILE debug=true \
           op monitor interval=30 timeout=180 \
           op monitor interval=27 role=Master timeout=180 \
           op start interval=0 timeout=180 \
