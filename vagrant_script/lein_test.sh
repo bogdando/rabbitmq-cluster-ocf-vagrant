@@ -17,7 +17,7 @@ if [ "${PURGE}" = "true" ]; then
   # Run lein to make a custom jepsen build
   docker stop jepsen-build && docker rm -f -v jepsen-build
   echo "Make a custom jepson jar build"
-  docker run -it --rm \
+  docker run --rm \
     -v /jepsen/jepsen/jepsen:/app \
     --entrypoint /bin/bash \
     --name jepsen-build -h jepsen \
@@ -27,7 +27,7 @@ if [ "${PURGE}" = "true" ]; then
   # Run lein for jepsen tests, using the custom build from the target dir mounted
   # Ignore exit code as it may fail. Distributed systems are faily with jepsen...
   echo "Run lein test"
-  docker run --stop-signal=SIGKILL -itd \
+  docker run -it --stop-signal=SIGKILL -d \
     -v /etc/hosts:/etc/hosts:ro \
     -v /root/.ssh:/root/.ssh:ro \
     -v /jepsen/jepsen/$1:/app \
@@ -39,13 +39,13 @@ if [ "${PURGE}" = "true" ]; then
     docker.io/bogdando/lein:latest
 
   dir_jepsen=resources/jepsen/jepsen/${JEPSON_VER}
-  docker exec -it jepsen bash -c "mkdir -p $dir_jepsen"
-  docker exec -it jepsen bash -c "cp -f /custom/jepsen-${JEPSON_VER}*  $dir_jepsen"
+  docker exec jepsen bash -c "mkdir -p $dir_jepsen"
+  docker exec jepsen bash -c "cp -f /custom/jepsen-${JEPSON_VER}*  $dir_jepsen"
 fi
 
 testcase="lein test"
 [ "${2}" ] && testcase="${testcase} :only jepsen.${1}-test/${2}"
-docker exec -it jepsen bash -c "lein deps && lein compile && ${testcase}"
+docker exec jepsen bash -c "lein deps && lein compile && ${testcase}"
 echo "Test exited with $?, but it is OK anyway"
 sync
 exit 0

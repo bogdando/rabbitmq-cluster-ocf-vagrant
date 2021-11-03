@@ -58,7 +58,7 @@ end
 # Use docker exec instead of the SSH provisioners
 def docker_exec (name, script)
   @logger.info("Executing docker-exec at #{name}: #{script}")
-  system "docker exec -it #{name} #{script}"
+  system "docker exec #{name} #{script}"
 end
 
 # Render a rabbitmq config and a pacemaker primitive configuration with a seed node n1
@@ -152,7 +152,7 @@ Vagrant.configure(2) do |config|
       config.vm.host_name = "n0"
       config.vm.provider :docker do |d, override|
         d.name = "n0"
-        d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged", "--ip=#{IP24NET}.254",
+        d.create_args = [ "--stop-signal=SIGKILL", "--privileged", "--ip=#{IP24NET}.254",
           "--memory=#{MEM}", "--cpu-shares=#{CPU}",
           "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
@@ -181,7 +181,7 @@ Vagrant.configure(2) do |config|
     config.vm.host_name = "n1"
     config.vm.provider :docker do |d, override|
       d.name = "n1"
-      d.create_args = [ "--stop-signal=SIGKILL", "-i", "-t", "--privileged",
+      d.create_args = [ "--stop-signal=SIGKILL", "--privileged",
         "--memory=#{MEM}", "--cpu-shares=#{CPU}",
         "--ip=#{IP24NET}.2", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
     end
@@ -203,7 +203,7 @@ Vagrant.configure(2) do |config|
       config.vm.host_name = "n#{index}"
       config.vm.provider :docker do |d, override|
         d.name = "n#{index}"
-        d.create_args = ["--stop-signal=SIGKILL", "-i", "-t", "--privileged",
+        d.create_args = ["--stop-signal=SIGKILL", "--privileged",
           "--memory=#{MEM}", "--cpu-shares=#{CPU}",
           "--ip=#{IP24NET}.#{ip_ind}", "--net=vagrant-#{OCF_RA_PROVIDER}", docker_volumes].flatten
       end
