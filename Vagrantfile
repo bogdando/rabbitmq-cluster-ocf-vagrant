@@ -79,8 +79,8 @@ docker_dropins = shell_script("/vagrant/vagrant_script/conf_docker_dropins.sh",
   ["DOCKER_DRIVER=#{DOCKER_DRIVER}"])
 pcmk_dropins = shell_script("/vagrant/vagrant_script/conf_pcmk_dropins.sh")
 lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", ["PURGE=true", "NODES='#{NODES}'"],
-  [JEPSEN_APP, JEPSEN_TESTCASE], "1>&2")
-ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh",[], [SLAVES_COUNT+1], "1>&2")
+  [JEPSEN_APP, JEPSEN_TESTCASE], "2>&1")
+ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh",[], [SLAVES_COUNT+1], "2>&1")
 root_login = shell_script("/vagrant/vagrant_script/conf_root_login.sh")
 entries = "'#{IP24NET}.254 n0' '#{IP24NET}.2 n1'"
 SLAVES_COUNT.times do |i|
@@ -89,9 +89,9 @@ SLAVES_COUNT.times do |i|
   entries += " '#{IP24NET}.#{ip_ind} n#{index}'"
 end
 rabbit_test_remote = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh",
-  ["AT_NODE=n1", "WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1], "1>&2")
+  ["AT_NODE=n1", "WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1], "2>&1")
 rabbit_test = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh",
-  ["WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1], "1>&2")
+  ["WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1], "2>&1")
 hosts_setup = shell_script("/vagrant/vagrant_script/conf_hosts.sh", [], [entries])
 
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
