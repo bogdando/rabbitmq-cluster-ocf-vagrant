@@ -11,8 +11,11 @@ for i in $(seq 1 $1); do
 done
 
 echo root > /tmp/sshpass
-cmd='timeout --signal=KILL 10 rabbitmqctl cluster_status'
-[ "${AT_NODE}" ] && cmd="sshpass -f /tmp/sshpass ssh ${AT_NODE} ${cmd}"
+cmd=timeout\ --signal=KILL\ 10\ rabbitmqctl\ eval\ "\"mnesia:system_info('running_db_nodes').\""
+cmd2='timeout --signal=KILL 5 crm_mon -fotAW -1'
+AT_NODE=${AT_NODE:-$(hostname)}
+cmd="sshpass -f /tmp/sshpass ssh ${AT_NODE} ${cmd}"
+cmd2="sshpass -f /tmp/sshpass ssh ${AT_NODE} ${cmd2}"
 
 count=0
 result="FAILED"
@@ -20,12 +23,12 @@ throw=1
 WAIT="${WAIT:-180}"
 while [ $count -lt $WAIT ]
 do
-  output=`${cmd} 2>/dev/null`
+  output=`${cmd}`
   rc=$?
   state=0
   for n in $rabbit_nodes; do
     [ "${n}" ] || continue
-    echo "${output}" | grep -q "running_nodes.*${n}"
+    echo "${output}" | grep -q "${n}"
     [ $? -eq 0 ] || state=1
   done
   if [ $rc -eq 0 -a $state -eq 0 ]; then
@@ -35,10 +38,9 @@ do
   fi
   echo "RabbitMQ cluster is yet to be ready"
   count=$((count+10))
-  if [ -z "${AT_NODE}" ]; then
-    echo "Crm_mon says:"
-    timeout --signal=KILL 5 crm_mon -fotAW -1
-  fi
+  while read -r l; do echo $l; done <<< $output
+  pcss=`${cmd2}`
+  while read -r l; do echo $l; done <<< $pcss
   sleep 30
 done
 
