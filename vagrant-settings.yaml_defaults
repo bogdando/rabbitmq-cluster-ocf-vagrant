@@ -34,5 +34,7 @@ storage: /var/tmp/rmq
 smoketest_wait: 360
 # run jepsen tests or not
 use_jepsen: true
+# bypass the host docker, or nest it (is false)
+docker_dropins: false
 # redirect tasks output to /dev/null or not
 quiet: false

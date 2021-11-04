@@ -22,8 +22,10 @@ OCF_RA_PROVIDER = ENV['OCF_RA_PROVIDER'] || cfg['ocf_ra_provider']
 OCF_RA_TYPE = ENV['OCF_RA_TYPE'] || cfg['ocf_ra_type']
 OCF_RA_PATH = ENV['OCF_RA_PATH'] || cfg['ocf_ra_path']
 UPLOAD_METHOD = ENV['UPLOAD_METHOD'] || cfg['upload_method']
-USE_JEPSEN = ENV['USE_JEPSEN'] || cfg['use_jepsen']
-jepsen = ["true", "yes"].include?(USE_JEPSEN.to_s.downcase) ? true : false
+_use_jepsen = ENV['USE_JEPSEN'] || cfg['use_jepsen'] || false
+USE_JEPSEN = ["true", "yes"].include?(_use_jepsen.to_s.downcase) ? true : false
+_docker_dropins = ENV['DOCKER_DROPINS'] || cfg['docker_dropins'] || false
+DOCKER_DROPINS = ["true", "yes"].include?(_docker_dropins.to_s.downcase) ? true : false
 JEPSEN_APP = ENV['JEPSEN_APP'] || cfg['jepsen_app']
 JEPSEN_TESTCASE = ENV['JEPSEN_TESTCASE'] || cfg['jepsen_testcase']
 QUIET = ENV['QUIET'] || cfg['quiet']
@@ -33,7 +35,7 @@ STORAGE= ENV['STORAGE'] || cfg['storage']
 POLFILE=ENV['POLFILE'] || cfg['policy_file']
 POLICY_BASE64=ENV['POLICY_BASE64'] || cfg['policy_base64']
 NODES=ENV['NODES'] || cfg['nodes'] || 'n1 n2 n3 n4 n5'
-if jepsen
+if USE_JEPSEN
   SLAVES_COUNT = NODES.split(' ').length - 1
   CPU = ENV['CPU'] || (1000 / (SLAVES_COUNT + 1) rescue 200)
   MEM = ENV['MEMORY'] || '256M'
@@ -130,10 +132,14 @@ Vagrant.configure(2) do |config|
   end
 
   # Prepare docker volumes for nested containers
+  extra_mounts=[]
+  if DOCKER_DROPINS
+    extra_mounts=[ "-v", "/run/docker.sock:/var/run/docker.sock",
+      "-v", "/run/containerd/containerd.sock:/run/containerd/containerd.sock" ]
+  end
   docker_volumes = [ "-v", "/sys/fs/cgroup:/sys/fs/cgroup",
-    "-v", "/var/run/docker.sock:/var/run/docker.sock",
     "-v", "#{STORAGE}:#{STORAGE}:ro"
-  ]
+  ] + extra_mounts
   if DOCKER_MOUNTS != 'none'
     if DOCKER_MOUNTS.kind_of?(Array)
       mounts = DOCKER_MOUNTS
@@ -165,7 +171,7 @@ Vagrant.configure(2) do |config|
           # Wait and run a smoke test against a cluster, shall not fail
           docker_exec("n0","#{rabbit_test_remote}") or raise "Smoke test: FAILED to assemble a cluster"
           # this runs all of the jepsen tests for the given app, and it *may* fail
-          docker_exec("n0","#{docker_dropins}")
+          docker_exec("n0","#{docker_dropins}") if DOCKER_DROPINS
           docker_exec("n0","#{lein_test}")
           # Verify if the cluster was recovered, shall not fail
           docker_exec("n0","#{rabbit_test_remote}")
