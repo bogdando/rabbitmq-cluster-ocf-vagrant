@@ -10,7 +10,7 @@ memory: 512M
 # 1st 3 numbers of a required /24 IPv4 docker net
 ip24net: 10.10.10
 # Docker image name (Docker registry)
-docker_image: bogdando/rabbitmq-cluster-ocf
+docker_image: bogdando/rabbitmq-cluster-ocf:buster_erl24_rmq38181
 # /sbin/init, /usr/sbin/sshd -D or suchlike
 docker_cmd: /sbin/init
 # Docker mounts as a list or a ws separated
