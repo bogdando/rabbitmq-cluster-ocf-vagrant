@@ -153,7 +153,7 @@ Vagrant.configure(2) do |config|
   end
 
   # A Jepsen only case, set up a contol node
-  if USE_JEPSEN == "true"
+  if USE_JEPSEN
     config.vm.define "n0", primary: true do |config|
       config.vm.host_name = "n0"
       config.vm.provider :docker do |d, override|
@@ -196,7 +196,7 @@ Vagrant.configure(2) do |config|
       trigger.ruby do |env, machine|
         COMMON_TASKS.each { |s| docker_exec("n1","#{s}") }
         # Wait and run a smoke test against a cluster, shall not fail
-        docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN == "true"
+        docker_exec("n1","#{rabbit_test}") unless USE_JEPSEN
       end
     end
   end
