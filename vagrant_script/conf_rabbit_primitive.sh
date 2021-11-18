@@ -5,7 +5,7 @@
 OCF_RA_PROVIDER=${OCF_RA_PROVIDER:-rabbitmq}
 OCF_RA_TYPE=${OCF_RA_TYPE:-rabbitmq-server-ha}
 POLFILE=${POLFILE:-/usr/local/sbin/set_rabbitmq_policy}
-[ "${POLICY_BASE64}:-''" ] &&  echo "${POLICY_BASE64}" | base64 -d > ${POLFILE}
+[ "${POLICY_BASE64:-}" ] &&  echo "${POLICY_BASE64}" | base64 -d > ${POLFILE}
 name=$(hostname)
 echo $name | grep -q "^n[0-9]\+"
 [ $? -eq 0 ] || exit 1
