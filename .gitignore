@@ -1,4 +1,5 @@
 *.swp
 *~
 .vagrant
+conf/manifest.pp
 vagrant-settings.yaml

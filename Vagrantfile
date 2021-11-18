@@ -1,5 +1,6 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+require 'erb'
 require 'log4r'
 require 'yaml'
 
@@ -34,7 +35,8 @@ SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg['smoketest_wait']
 STORAGE= ENV['STORAGE'] || cfg['storage']
 POLFILE=ENV['POLFILE'] || cfg['policy_file']
 POLICY_BASE64=ENV['POLICY_BASE64'] || cfg['policy_base64']
-NODES=ENV['NODES'] || cfg['nodes'] || 'n1 n2 n3 n4 n5'
+NODES_SHORT=ENV['NODES'] || cfg['nodes'] || 'n1 n2 n3 n4 n5'
+NODES=NODES_SHORT.split().map{|n| "#{n}.big.rodents.lc"}.join(' ')
 if USE_JEPSEN
   SLAVES_COUNT = NODES.split(' ').length - 1
   CPU = ENV['CPU'] || (1000 / (SLAVES_COUNT + 1) rescue 200)
@@ -64,10 +66,21 @@ def docker_exec (name, script)
 end
 
 # Render a rabbitmq config and a pacemaker primitive configuration with a seed node n1
-nodes_list = "[#{NODES.split(' ').join(', ')}]"
-corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh", ["CNT=#{SLAVES_COUNT+1}", "NODES='#{nodes_list}'"])
+nodes_list = NODES.split(' ').map{|n| "'#{n}'"}.join(', ')
+template = ERB.new <<-EOF
+  class {'pacemaker::new::setup::config':
+    cluster_nodes=>[<%= nodes %>],
+    cluster_options=>{'expected_votes'=><%= cnt %>}
+  }
+EOF
+b = binding
+b.local_variable_set(:nodes, nodes_list)
+b.local_variable_set(:cnt, SLAVES_COUNT+1)
+File.write('conf/manifest.pp', template.result(b))
+corosync_template = shell_script("cp /vagrant/conf/manifest.pp /manifest.pp")
+corosync_setup = shell_script("/vagrant/vagrant_script/conf_corosync.sh")
 rabbit_primitive_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_primitive.sh",
-  ["SEED=n1", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}", "POLFILE=#{POLFILE}", "POLICY_BASE64=#{POLICY_BASE64}"])
+  ["SEED=n1.big.rodents.lc", "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}", "POLFILE=#{POLFILE}", "POLICY_BASE64=#{POLICY_BASE64}"])
 rabbit_conf_setup = shell_script("cp /vagrant/conf/rabbitmq.config /etc/rabbitmq/")
 rabbit_env_setup = shell_script("cp /vagrant/conf/rabbitmq-env.conf /etc/rabbitmq/")
 
@@ -80,15 +93,15 @@ jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
 docker_dropins = shell_script("/vagrant/vagrant_script/conf_docker_dropins.sh",
   ["DOCKER_DRIVER=#{DOCKER_DRIVER}"])
 pcmk_dropins = shell_script("/vagrant/vagrant_script/conf_pcmk_dropins.sh")
-lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", ["PURGE=true", "NODES='#{NODES}'"],
+lein_test = shell_script("/vagrant/vagrant_script/lein_test.sh", ["PURGE=true", "NODES='#{NODES_SHORT}'"],
   [JEPSEN_APP, JEPSEN_TESTCASE], "2>&1")
 ssh_setup = shell_script("/vagrant/vagrant_script/conf_ssh.sh",[], [SLAVES_COUNT+1], "2>&1")
 root_login = shell_script("/vagrant/vagrant_script/conf_root_login.sh")
-entries = "'#{IP24NET}.254 n0' '#{IP24NET}.2 n1'"
+entries = "'#{IP24NET}.254 n0.big.rodents.lc n0' '#{IP24NET}.2 n1.big.rodents.lc n1'"
 SLAVES_COUNT.times do |i|
   index = i + 2
   ip_ind = i + 3
-  entries += " '#{IP24NET}.#{ip_ind} n#{index}'"
+  entries += " '#{IP24NET}.#{ip_ind} n#{index}.big.rodents.lc n#{index}'"
 end
 rabbit_test_remote = shell_script("/vagrant/vagrant_script/test_rabbitcluster.sh",
   ["AT_NODE=n1", "WAIT=#{SMOKETEST_WAIT}"], [SLAVES_COUNT+1], "2>&1")
@@ -180,8 +193,8 @@ Vagrant.configure(2) do |config|
     end
   end
 
-  COMMON_TASKS = [root_login, ssh_setup, hosts_setup, corosync_setup, pcmk_dropins, rabbit_ocf_setup,
-                  rabbit_primitive_setup, rabbit_conf_setup, rabbit_env_setup]
+  COMMON_TASKS = [root_login, ssh_setup, hosts_setup, corosync_template, corosync_setup, pcmk_dropins,
+                  rabbit_ocf_setup, rabbit_primitive_setup, rabbit_conf_setup, rabbit_env_setup]
 
   config.vm.define "n1", primary: true do |config|
     config.vm.host_name = "n1"

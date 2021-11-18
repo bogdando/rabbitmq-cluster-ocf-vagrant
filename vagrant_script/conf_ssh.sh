@@ -1,7 +1,7 @@
 #!/bin/bash
 # Setup jepsen related things, $1 is the number of nX nodes
 # Protect from an incident running on hosts which aren't n1, n2, etc.
-me="$(hostname)"
+me="$(hostname -s)"
 echo $me | grep -q "^n[0-9]\+"
 [ $? -eq 0 ] || exit 1
 mkdir -p /root/.ssh

@@ -13,7 +13,7 @@ done
 echo root > /tmp/sshpass
 cmd=timeout\ --signal=KILL\ 10\ rabbitmqctl\ eval\ "\"mnesia:system_info('running_db_nodes').\""
 cmd2='timeout --signal=KILL 5 crm_mon -fotAW -1'
-AT_NODE=${AT_NODE:-$(hostname)}
+AT_NODE=${AT_NODE:-$(hostname -s)}
 cmd="sshpass -f /tmp/sshpass ssh ${AT_NODE} ${cmd}"
 cmd2="sshpass -f /tmp/sshpass ssh ${AT_NODE} ${cmd2}"
 

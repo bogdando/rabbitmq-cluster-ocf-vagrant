@@ -1,7 +1,7 @@
 #!/bin/sh
 # Manage drop-ins for a corosync/pacemaker service units
 # Protect from an incident running on hosts which aren't n1, n2, etc.
-hostname | grep -q "^n[0-9]\+"
+hostname -s | grep -q "^n[0-9]\+"
 [ $? -eq 0 ] || exit 1
 
 drop_in="/etc/systemd/system/corosync.service.d/"
