@@ -33,8 +33,8 @@ storage: /var/tmp/rmq
 # smoke test timeout, includes waiting for a cluster
 smoketest_wait: 360
 # run jepsen tests or not
-use_jepsen: true
+use_jepsen: yes
 # bypass the host docker, or nest it (is false)
-docker_dropins: false
+docker_dropins: no
 # redirect tasks output to /dev/null or not
-quiet: false
+quiet: no
