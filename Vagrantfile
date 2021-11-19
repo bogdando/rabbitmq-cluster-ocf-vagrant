@@ -122,6 +122,7 @@ Vagrant.configure(2) do |config|
     trigger.only_on = 'n1' # we run on host in fact, but only once
     trigger.on_error = :continue
     trigger.run = {inline: "bash -c '\\"\
+      "docker network list | grep -q vagrant-#{OCF_RA_PROVIDER} ||\\"\
       "docker network create -d bridge \\"\
       "-o 'com.docker.network.bridge.enable_icc'='true' \\"\
       "-o 'com.docker.network.bridge.enable_ip_masquerade'='true' \\"\
@@ -129,13 +130,15 @@ Vagrant.configure(2) do |config|
       "--gateway=#{IP24NET}.1 \\"\
       "--ip-range=#{IP24NET}.0/24 \\"\
       "--subnet=#{IP24NET}.0/24 \\"\
-      "vagrant-#{OCF_RA_PROVIDER} >/dev/null 2>&1'"
+      "vagrant-#{OCF_RA_PROVIDER} >/dev/null 2>&1 ||:'"\
     }
   end
   config.trigger.after :destroy do |trigger|
     trigger.only_on = 'n1' # we run on host in fact, but only once
     trigger.on_error = :continue
-    trigger.run = {inline: "bash -c 'docker network rm vagrant-#{OCF_RA_PROVIDER} >/dev/null 2>&1'"}
+    trigger.run = {inline: "bash -c '\\"\
+      "docker network list | grep -q vagrant-#{OCF_RA_PROVIDER} &&\\"\
+      "docker network rm vagrant-#{OCF_RA_PROVIDER} >/dev/null 2>&1 ||:'"}
   end
 
   config.vm.provider :docker do |d, override|
