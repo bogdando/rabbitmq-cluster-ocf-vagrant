@@ -29,6 +29,7 @@ _docker_dropins = ENV['DOCKER_DROPINS'] || cfg['docker_dropins'] || false
 DOCKER_DROPINS = ["true", "yes"].include?(_docker_dropins.to_s.downcase) ? true : false
 JEPSEN_APP = ENV['JEPSEN_APP'] || cfg['jepsen_app']
 JEPSEN_TESTCASE = ENV['JEPSEN_TESTCASE'] || cfg['jepsen_testcase']
+JEPSEN_BRANCH = ENV['JEPSEN_BRANCH'] || cfg['jepsen_branch']
 QUIET = ENV['QUIET'] || cfg['quiet']
 silent = ["true", "yes"].include?(QUIET.to_s.downcase) ? true : false
 SMOKETEST_WAIT = ENV['SMOKETEST_WAIT'] || cfg['smoketest_wait']
@@ -89,7 +90,7 @@ rabbit_ocf_setup = shell_script("/vagrant/vagrant_script/conf_rabbit_ocf.sh",
    "OCF_RA_PROVIDER=#{OCF_RA_PROVIDER}", "OCF_RA_TYPE=#{OCF_RA_TYPE}"])
 
 # Setup docker dropins, lein, jepsen and hosts/ssh access for it
-jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh")
+jepsen_setup = shell_script("/vagrant/vagrant_script/conf_jepsen.sh", [], [JEPSEN_BRANCH])
 docker_dropins = shell_script("/vagrant/vagrant_script/conf_docker_dropins.sh",
   ["DOCKER_DRIVER=#{DOCKER_DRIVER}"])
 pcmk_dropins = shell_script("/vagrant/vagrant_script/conf_pcmk_dropins.sh")
