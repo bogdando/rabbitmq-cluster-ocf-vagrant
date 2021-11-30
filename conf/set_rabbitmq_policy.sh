@@ -5,4 +5,4 @@
 
 # Enable ha-policy with the replica factor of 5 for jepsen queues
 ocf_log info "${LH} Setting HA policy for all queues"
-${OCF_RESKEY_ctl} set_policy ha-all "jepsen." '{"ha-mode":"exactly", "ha-params":2, "ha-sync-mode":"automatic"}'
+${OCF_RESKEY_ctl} set_policy ha-all "jepsen." '{"ha-mode":"exactly", "ha-params":2, "ha-sync-mode":"manual", "ha-promote-on-shutdown":"always"}'
