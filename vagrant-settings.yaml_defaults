@@ -1,7 +1,7 @@
 # copy it to vagrant-settings.yaml then Vagrantfile
 # will use values from this file
 
-# Number of nodes (except n1 for master and n0 for Jepsen runner)
+# Number of nodes (except n1 for main and n0 for Jepsen runner)
 # and its cgroup limits
 slaves_count: 1
 nodes: "n1 n2"
@@ -26,7 +26,7 @@ ocf_ra_provider: rabbitmq
 ocf_ra_type: rabbitmq-server-ha
 policy_file: /vagrant/conf/set_rabbitmq_policy.sh
 # How to upload the OCF RA : none, copy from ocf_ra_path or wget stable branch
-#ocf_ra_path: https://raw.githubusercontent.com/rabbitmq/rabbitmq-server-release/master/scripts/rabbitmq-server-ha.ocf
+#ocf_ra_path: https://raw.githubusercontent.com/rabbitmq/rabbitmq-server-release/jepsen/scripts/rabbitmq-server-ha.ocf
 ocf_ra_path: none
 upload_method: none
 storage: /var/tmp/rmq

@@ -38,15 +38,15 @@ EOF
           ocf:$OCF_RA_PROVIDER:$OCF_RA_TYPE \
           params erlang_cookie=DPMDALGUKEOMPTHWPYKC node_port=5672 policy_file=$POLFILE debug=true use_fqdn=true \
           op monitor interval=30 timeout=180 \
-          op monitor interval=27 role=Master timeout=180 \
+          op monitor interval=27 role=Promoted timeout=180 \
           op start interval=0 timeout=180 \
           op stop interval=0 timeout=120 \
           op promote interval=0 timeout=120 \
           op demote interval=0 timeout=120 \
           op notify interval=0 timeout=180 \
           meta migration-threshold=10 failure-timeout=30s resource-stickiness=100 && \
-    crm --force configure ms p_rabbitmq-server-master p_rabbitmq-server \
-          meta notify=true ordered=true interleave=false master-max=3 master-node-max=3 \
+    crm --force configure ms p_rabbitmq-server-promoted p_rabbitmq-server \
+          meta notify=true ordered=true interleave=false promoted-max=3 promoted-node-max=3 \
           requires="nothing"
     [ $? -eq 0 ] && break
     count=$((count+10))
@@ -55,12 +55,12 @@ EOF
 else
   # wait for a seed node
   while :; do
-    crm_resource --locate --resource p_rabbitmq-server-master | grep -q "running on.*${SEED}" && break
+    crm_resource --locate --resource p_rabbitmq-server-promoted | grep -q "running on.*${SEED}" && break
     echo "Waiting for a seed node ${SEED}"
     sleep 10
   done
 fi
 
-crm configure location p_rabbitmq-server-master_$name p_rabbitmq-server-master 100: $name
-crm resource cleanup p_rabbitmq-server-master
+crm configure location p_rabbitmq-server-promoted_$name p_rabbitmq-server-promoted 100: $name
+crm resource cleanup p_rabbitmq-server-promoted
 exit 0

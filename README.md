@@ -5,11 +5,9 @@
 
 
 A Vagrantfile to bootstrap and smoketest a RabbitMQ cluster by the pacemaker
-[OCF RA](https://github.com/rabbitmq/rabbitmq-server/blob/master/scripts/rabbitmq-server-ha.ocf).
+[OCF RA](https://github.com/ClusterLabs/resource-agents/blob/main/heartbeat/rabbitmq-server-ha).
 For details, see the [docs](http://www.rabbitmq.com/pacemaker.html).
 
-Note, there is also [rabbitmq-cluster OCF RA](https://github.com/ClusterLabs/resource-agents/blob/master/heartbeat/rabbitmq-cluster)
-in the [clusterlabs/resource-agents](https://github.com/ClusterLabs/resource-agents).
 With some luck, the script ``vagrant_script/conf_rabbit_primitive.sh`` may
 be updated to handle the latter one as well. Hopefully, we will merge them into
 the single OCF RA solution, eventually.
